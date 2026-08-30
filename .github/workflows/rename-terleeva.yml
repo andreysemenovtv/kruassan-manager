@@ -1,0 +1,38 @@
+name: Rename Terleeva everywhere
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rename Terleeva in portal
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace("'Шеф · Терлеева'", "'Шеф · Татьяна Терлеева'")
+          s = s.replace("'Шеф · Татьяна Терлеева':'Терлеева'", "'Шеф · Татьяна Терлеева':'Татьяна Терлеева'")
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Rename Terleeva to Tatyana Terleeva"
+          git push
