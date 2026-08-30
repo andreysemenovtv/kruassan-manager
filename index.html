@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f2ece3">
+<title>Круассан Кафе — портал менеджера</title>
+<style>
+:root{
+  --bg:#f3ede5;
+  --paper:#fffdf9;
+  --paper-2:#f9f4ed;
+  --ink:#241d18;
+  --muted:#7b7067;
+  --line:#dfd4c7;
+  --accent:#b47a43;
+  --accent-deep:#8e5c30;
+  --sage:#7d8877;
+  --shadow:0 14px 40px rgba(54,40,27,.07);
+  --radius:24px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;color:inherit}
+svg{display:block}
+.topbar{position:sticky;top:0;z-index:50;padding-top:env(safe-area-inset-top);background:rgba(243,237,229,.91);backdrop-filter:blur(18px);border-bottom:1px solid rgba(68,50,34,.08)}
+.topbar-inner{max-width:860px;margin:auto;padding:13px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.logo-mark{width:43px;height:43px;border-radius:50%;background:var(--ink);display:grid;place-items:center;color:#f5e6d2;flex:none}
+.logo-mark svg{width:26px;height:26px}
+.brand-copy{min-width:0}
+.brand-name{font-family:Georgia,"Times New Roman",serif;font-size:18px;line-height:1;font-weight:700;letter-spacing:.02em}
+.brand-sub{font-size:10px;color:var(--muted);margin-top:5px;letter-spacing:.13em;text-transform:uppercase;white-space:nowrap}
+.header-action{border:1px solid var(--line);background:rgba(255,253,249,.72);border-radius:999px;padding:9px 12px;font-size:12px;font-weight:700}
+.shell{max-width:860px;margin:auto;padding:27px 16px 64px}
+.view{display:none;animation:enter .22s ease}.view.active{display:block}@keyframes enter{from{opacity:.2;transform:translateY(5px)}to{opacity:1;transform:none}}
+.hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#fffaf3 0%,#efe0cf 100%);border:1px solid #e4d6c5;border-radius:30px;padding:28px 25px 26px;box-shadow:var(--shadow);min-height:214px}
+.hero:after{content:"";position:absolute;width:190px;height:190px;border:34px solid rgba(180,122,67,.10);border-radius:50%;right:-85px;top:-67px}
+.hero-kicker{display:flex;align-items:center;gap:8px;color:var(--accent-deep);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.1em}
+.hero-kicker:before{content:"";width:25px;height:1px;background:currentColor}
+h1,h2,h3,p{margin-top:0}h1,h2{font-family:Georgia,"Times New Roman",serif;letter-spacing:-.025em}
+h1{font-size:clamp(38px,9vw,58px);line-height:.98;margin:18px 0 12px;max-width:580px;font-weight:500}
+.hero p{max-width:560px;color:#695e55;line-height:1.55;margin:0;font-size:15px}
+.hero-bottom{display:flex;gap:8px;flex-wrap:wrap;margin-top:21px}
+.status-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(75,57,42,.11);background:rgba(255,255,255,.55);padding:8px 11px;border-radius:999px;font-size:11px;font-weight:750;color:#5f554d}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#bfa987}.status-dot.ready{background:#75866f}
+.section-label{display:flex;justify-content:space-between;align-items:end;gap:15px;margin:26px 4px 13px}.section-label h3{font-size:12px;text-transform:uppercase;letter-spacing:.11em;margin:0;color:#685d54}.section-label span{font-size:11px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tile{position:relative;overflow:hidden;border:1px solid var(--line);background:var(--paper);border-radius:24px;min-height:170px;padding:17px;text-align:left;display:flex;flex-direction:column;box-shadow:0 8px 26px rgba(54,40,27,.035);transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease}
+.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:#d2c2b1}.tile:active{transform:scale(.985)}
+.tile.featured{background:#27211d;color:#fff;border-color:#27211d}.tile.featured .tile-desc{color:#bfb5ad}.tile.featured .tile-icon{background:#3a302a;color:#f1d7b9}.tile.featured .tile-arrow{color:#d8c6b5}
+.tile.soft-gold{background:#efe0cd}.tile.soft-sage{background:#e4e7df}.tile.soft-pink{background:#eee3df}
+.tile-icon{width:43px;height:43px;border-radius:14px;background:#f1e9df;display:grid;place-items:center;color:#6b513b}.tile-icon svg{width:22px;height:22px}
+.tile-title{font-family:Georgia,"Times New Roman",serif;font-size:23px;line-height:1.02;margin-top:auto;padding-top:24px}
+.tile-desc{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.35;padding-right:23px}
+.tile-arrow{position:absolute;right:16px;bottom:16px;font-size:22px;color:#9c8c7c}
+.tile-badge{position:absolute;right:13px;top:13px;background:rgba(255,255,255,.54);border:1px solid rgba(72,54,39,.10);border-radius:999px;padding:5px 8px;font-size:9px;font-weight:850;letter-spacing:.05em;text-transform:uppercase}
+.quick-note{margin-top:14px;border:1px dashed #d5c6b7;background:rgba(255,253,249,.42);border-radius:19px;padding:14px 15px;display:flex;align-items:flex-start;gap:11px;color:#695f56;font-size:12px;line-height:1.45}.quick-note svg{width:18px;height:18px;flex:none;margin-top:1px;color:var(--accent-deep)}
+.page-head{padding:6px 4px 20px}.back-row{display:flex;align-items:center;gap:8px;margin-bottom:21px}.back-link{border:0;background:transparent;padding:0;color:var(--accent-deep);font-size:12px;font-weight:800;display:flex;align-items:center;gap:6px}.back-link svg{width:16px;height:16px}.page-eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:850;color:var(--accent-deep);margin-bottom:8px}.page-head h2{font-size:38px;line-height:1.02;margin:0}.page-head p{color:var(--muted);line-height:1.5;margin:10px 0 0;max-width:640px;font-size:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:19px;box-shadow:0 8px 27px rgba(54,40,27,.035)}
+.form-card{display:grid;gap:14px}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}.field-row.three{grid-template-columns:repeat(3,1fr)}
+label{display:grid;gap:7px;font-size:11px;text-transform:uppercase;letter-spacing:.055em;font-weight:800;color:#675b51}
+input,select,textarea{width:100%;border:1px solid #d9cdbf;background:#fffdfa;border-radius:14px;padding:13px 14px;color:var(--ink);outline:0;text-transform:none;letter-spacing:0;font-weight:500;min-height:47px}
+textarea{resize:vertical;line-height:1.45}input:focus,select:focus,textarea:focus{border-color:#b79577;box-shadow:0 0 0 3px rgba(180,122,67,.09)}
+.primary,.secondary,.ghost{border-radius:15px;padding:13px 15px;font-weight:850;border:1px solid transparent;min-height:47px}.primary{background:var(--ink);color:#fff}.primary:active{background:#000}.secondary{background:#eee4d8;border-color:#dfd1c1}.ghost{background:transparent;border-color:var(--line)}
+.form-help{font-size:11px;color:var(--muted);margin-top:-4px;line-height:1.4}.percent-wrap{position:relative}.percent-wrap input{padding-right:40px}.percent-wrap span{position:absolute;right:14px;bottom:14px;font-size:14px;color:#8a7b6e;font-weight:750}
+.ato-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.schedule-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:13px}.schedule-list{display:grid;gap:8px}.schedule-day{display:grid;grid-template-columns:74px 1fr;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #eee6dc}.schedule-day:last-child{border-bottom:0}.day-meta b{display:block;font-family:Georgia,serif;font-size:18px}.day-meta small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.day-entry{display:grid;grid-template-columns:1fr auto;gap:7px}.day-entry input{min-height:42px;padding:10px 12px}.quick-shifts{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}.chip{border:1px solid #dfd1c2;background:#faf5ef;border-radius:999px;padding:7px 9px;font-size:10px;font-weight:800}.chip:active{background:#eadac9}
+.forms-list{display:grid;gap:9px}.doc-card{width:100%;border:1px solid var(--line);background:var(--paper);border-radius:18px;padding:14px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;text-align:left}.doc-icon{width:43px;height:43px;border-radius:13px;background:#efe4d8;display:grid;place-items:center;color:#7d5839;font-family:Georgia,serif;font-weight:700}.doc-card b{display:block;font-size:14px}.doc-card small{display:block;color:var(--muted);margin-top:4px;font-size:11px}.admin-card{margin-top:14px}.admin-card h3{font-family:Georgia,serif;margin:0 0 6px;font-size:20px}.admin-card p{color:var(--muted);font-size:12px;line-height:1.5}.actions-row{display:flex;gap:8px;flex-wrap:wrap}.danger-link{border:0;background:transparent;color:#984b44;font-weight:800;padding:10px}.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#211b17;color:#fff;border-radius:999px;padding:11px 16px;font-weight:800;font-size:12px;opacity:0;pointer-events:none;transition:.2s;z-index:80;box-shadow:0 15px 40px rgba(0,0,0,.2)}.toast.show{opacity:1;transform:translate(-50%,0)}
+dialog{width:min(720px,calc(100% - 18px));max-height:92vh;border:0;border-radius:24px;padding:0;box-shadow:0 24px 80px rgba(0,0,0,.26)}dialog::backdrop{background:rgba(30,23,18,.5);backdrop-filter:blur(4px)}.dialog-shell{padding:16px;overflow:auto;max-height:92vh;background:var(--bg)}.dialog-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:13px}.template-form{display:grid;gap:11px;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:14px}.paper{margin:13px 0;padding:26px;min-height:300px;background:#fff;border:1px solid var(--line);border-radius:13px;font-family:"Times New Roman",serif;font-size:16px;line-height:1.55;white-space:pre-wrap}.dialog-actions{display:flex;justify-content:flex-end;gap:8px}
+.footer{padding:26px 4px 5px;text-align:center;color:#9a8d82;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+@media(max-width:600px){.shell{padding:19px 12px 52px}.topbar-inner{padding-left:14px;padding-right:14px}.hero{padding:23px 20px;border-radius:25px;min-height:200px}.grid{gap:9px}.tile{min-height:158px;padding:14px;border-radius:21px}.tile-title{font-size:21px}.tile-desc{font-size:11px}.field-row,.field-row.three,.ato-grid,.schedule-toolbar{grid-template-columns:1fr}.card{padding:16px}.page-head h2{font-size:34px}.schedule-day{grid-template-columns:66px 1fr}.brand-sub{font-size:9px}.header-action{font-size:11px;padding:8px 10px}}
+@media(max-width:360px){.grid{grid-template-columns:1fr}.tile{min-height:132px}.tile-title{padding-top:15px}}
+@media print{body *{visibility:hidden!important}#templatePreview,#templatePreview *{visibility:visible!important}#templatePreview{position:absolute;left:0;top:0;width:100%;border:0;margin:0;padding:20mm}}
+
+.primary[disabled],.secondary[disabled]{opacity:.55;cursor:wait}
+.field-loading{opacity:.58;pointer-events:none}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4.2 14.9c2.6-5.3 4.9-7.2 7.8-7.2s5.2 1.9 7.8 7.2"/><path d="M6.3 15.2c1.7-3.9 3.5-5.4 5.7-5.4s4 1.5 5.7 5.4"/><path d="M3 15.1c1.3 1.4 2.7 1.8 4.2 1.1M21 15.1c-1.3 1.4-2.7 1.8-4.2 1.1M8.8 16.2c2.1 1.3 4.3 1.3 6.4 0"/></svg>
+      </div>
+      <div class="brand-copy"><div class="brand-name">Круассан Кафе</div><div class="brand-sub">Внутренний портал менеджера</div></div>
+    </div>
+    <button class="header-action" id="homeBtn" hidden>На главную</button>
+  </div>
+</header>
+<main class="shell">
+<section id="homeView" class="view active">
+  <div class="hero">
+    <div class="hero-kicker">Рабочий портал</div>
+    <h1>Всё нужное — в одном месте</h1>
+    <p>Быстро заполнить показатели, внести график, подотчёт или открыть нужный бланк. Без лишних экранов и сложной навигации.</p>
+    <div class="hero-bottom"><span class="status-pill"><i class="status-dot ready"></i>Сайт работает</span><span class="status-pill"><i class="status-dot ready"></i>Google Sheets — подключены</span></div>
+  </div>
+  <div class="section-label"><h3>Рабочие разделы</h3><span>Выберите задачу</span></div>
+  <div class="grid">
+    <button class="tile featured" data-open="schedule">
+      <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="5.2" width="17" height="15" rx="3"/><path d="M7.5 3.5v3.4M16.5 3.5v3.4M3.7 9.3h16.6M7 13h3M14 13h3M7 16.5h3"/></svg></span>
+      <span class="tile-badge">Основное</span><span class="tile-title">График</span><span class="tile-desc">Смены менеджеров и шефов</span><span class="tile-arrow">›</span>
+    </button>
+    <button class="tile soft-gold" data-open="ato">
+      <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19.5V12h4v7.5M10 19.5V7h4v12.5M16 19.5V3.5h4v16"/><path d="M3 20.5h18"/></svg></span>
+      <span class="tile-title">АТО</span><span class="tile-desc">Показатели для премирования до сотых</span><span class="tile-arrow">›</span>
+    </button>
+    <button class="tile soft-sage" data-open="expenses">
+      <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="5" width="17" height="14" rx="3"/><path d="M16.2 10h4.3v4h-4.3a2 2 0 0 1 0-4Z"/><circle cx="16.5" cy="12" r=".6" fill="currentColor"/></svg></span>
+      <span class="tile-title">Подотчёт</span><span class="tile-desc">Потребность в наличке по объекту</span><span class="tile-arrow">›</span>
+    </button>
+    <button class="tile" data-open="audit">
+      <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 4.5h10M7 8.5h10M7 12.5h6"/><path d="M5.5 2.8h13a2 2 0 0 1 2 2v14.4a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V4.8a2 2 0 0 1 2-2Z"/><path d="m14.8 17.1 1.5 1.5 3-3"/></svg></span>
+      <span class="tile-title">Ревизия</span><span class="tile-desc">Зафиксировать результат проверки</span><span class="tile-arrow">›</span>
+    </button>
+    <button class="tile soft-pink" data-open="timesheet">
+      <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/></svg></span>
+      <span class="tile-title">Табель</span><span class="tile-desc">Смена, время и количество часов</span><span class="tile-arrow">›</span>
+    </button>
+    <button class="tile" data-open="forms">
+      <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 3.5h7l4 4v13H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/><path d="M14 3.5v5h4M8.5 12h6.5M8.5 15h6.5"/></svg></span>
+      <span class="tile-title">Бланки</span><span class="tile-desc">Заявления и рабочие документы</span><span class="tile-arrow">›</span>
+    </button>
+  </div>
+  <div class="quick-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v4l2.5 1.5"/><circle cx="12" cy="12" r="9"/></svg><span><b>Сделано под телефон.</b> Самые частые действия находятся на главном экране; заполнение каждой формы занимает минимум времени.</span></div>
+  <div class="footer">Круассан Кафе · внутренний рабочий портал</div>
+</section>
+
+<section id="atoView" class="view">
+  <div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Премирование</div><h2>Результаты АТО</h2><p>Введите показатели от 0,00 до 100,00. Процент добавится автоматически.</p></div>
+  <form id="atoForm" class="card form-card">
+    <div class="field-row"><label>Объект<select name="object" class="ato-object" required></select></label><label>Менеджер<input name="manager" placeholder="ФИО" required></label></div>
+    <div class="ato-grid">
+      <label>Общий результат АТО<div class="percent-wrap"><input type="number" name="ato" inputmode="decimal" min="0" max="100" step="0.01" placeholder="92,60" required><span>%</span></div></label>
+      <label>Технологи производства<div class="percent-wrap"><input type="number" name="production" inputmode="decimal" min="0" max="100" step="0.01" placeholder="90,91" required><span>%</span></div></label>
+      <label>Бар<div class="percent-wrap"><input type="number" name="bar" inputmode="decimal" min="0" max="100" step="0.01" placeholder="96,43" required><span>%</span></div></label>
+      <label>Пекарня<div class="percent-wrap"><input type="number" name="bakery" inputmode="decimal" min="0" max="100" step="0.01" placeholder="93,55" required><span>%</span></div></label>
+    </div>
+    <div class="form-help">Допустимы сотые: например 92,60. При выборе объекта уже сохранённые значения подтянутся из Google Sheets.</div>
+    <button class="primary" type="submit">Сохранить АТО</button>
+  </form>
+</section>
+
+<section id="scheduleView" class="view">
+  <div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">График</div><h2>График менеджера</h2><p>Выберите объект и период. Для каждого дня можно указать смену, «Вых», «Отпуск» или свободный текст.</p></div>
+  <form id="scheduleForm" class="card form-card">
+    <div class="schedule-toolbar"><label>Объект<select name="object" class="schedule-object" required></select></label><label>Менеджер<input name="manager" placeholder="ФИО" required></label></div>
+    <label>Период<select id="schedulePeriod"></select></label>
+    <div class="quick-shifts"><button type="button" class="chip" data-shift="8-17">8–17</button><button type="button" class="chip" data-shift="9-18">9–18</button><button type="button" class="chip" data-shift="12-22">12–22</button><button type="button" class="chip" data-shift="Вых">Вых</button><button type="button" class="chip" data-shift="Отпуск">Отпуск</button></div>
+    <div class="schedule-list" id="scheduleList"></div>
+    <button class="primary" type="submit">Сохранить график</button>
+  </form>
+</section>
+
+<section id="expensesView" class="view">
+  <div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Подотчёт</div><h2>Потребность в наличке</h2><p>Если средства на период не нужны, укажите 0 ₽.</p></div>
+  <form id="expensesForm" class="card form-card">
+    <div class="field-row"><label>Объект<select name="object" class="cash-object" required></select></label><label>Менеджер<input name="manager" placeholder="ФИО" required></label></div>
+    <label>Сумма к подотчёту, ₽<input type="number" name="amount" min="0" step="0.01" inputmode="decimal" placeholder="0" required></label>
+    <label>На что планируются средства<textarea name="purpose" rows="3" placeholder="Фриланс, недовоз продукции, развоз персонала…"></textarea></label>
+    <label>Комментарий<textarea name="comment" rows="3" placeholder="Если требуется дополнительное пояснение"></textarea></label>
+    <button class="primary" type="submit">Сохранить потребность</button>
+  </form>
+</section>
+
+<section id="auditView" class="view">
+  <div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Ревизия</div><h2>Результат ревизии</h2><p>Короткая фиксация результата по объекту.</p></div>
+  <form id="auditForm" class="card form-card">
+    <div class="field-row"><label>Объект<select name="object" class="all-object" required></select></label><label>Дата<input type="date" name="date" required></label></div>
+    <label>Ответственный менеджер<input name="manager" placeholder="ФИО" required></label>
+    <div class="field-row"><label>Недостача, ₽<input type="number" name="shortage" step="0.01" min="0" value="0" required></label><label>Излишек, ₽<input type="number" name="surplus" step="0.01" min="0" value="0" required></label></div>
+    <label>Комментарий / причины расхождений<textarea name="comment" rows="4" placeholder="Кратко опишите существенные расхождения"></textarea></label>
+    <button class="primary" type="submit">Сохранить результат</button>
+  </form>
+</section>
+
+<section id="timesheetView" class="view">
+  <div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Табель</div><h2>Внести смену</h2><p>Основные данные о смене сотрудника.</p></div>
+  <form id="timesheetForm" class="card form-card">
+    <div class="field-row"><label>Объект<select name="object" class="all-object" required></select></label><label>Дата<input type="date" name="date" required></label></div>
+    <label>ФИО сотрудника<input name="employee" placeholder="Иванов Иван" required></label>
+    <div class="field-row three"><label>Начало<input type="time" name="start"></label><label>Окончание<input type="time" name="end"></label><label>Часов<input type="number" name="hours" min="0" max="24" step="0.25" placeholder="13" required></label></div>
+    <label>Комментарий<textarea name="comment" rows="3" placeholder="Если нужен комментарий"></textarea></label>
+    <button class="primary" type="submit">Сохранить смену</button>
+  </form>
+</section>
+
+<section id="formsView" class="view">
+  <div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Документы</div><h2>Бланки и заявления</h2><p>Откройте шаблон, заполните и сохраните в PDF или распечатайте.</p></div>
+  <div class="forms-list">
+    <button class="doc-card" data-template="vacation"><span class="doc-icon">A4</span><span><b>Заявление на отпуск</b><small>Ежегодный оплачиваемый отпуск</small></span><span>›</span></button>
+    <button class="doc-card" data-template="unpaid"><span class="doc-icon">A4</span><span><b>Отпуск за свой счёт</b><small>Без сохранения заработной платы</small></span><span>›</span></button>
+    <button class="doc-card" data-template="dismissal"><span class="doc-icon">A4</span><span><b>Заявление на увольнение</b><small>Стандартный шаблон</small></span><span>›</span></button>
+    <button class="doc-card" data-template="memo"><span class="doc-icon">A4</span><span><b>Служебная записка</b><small>Универсальный бланк</small></span><span>›</span></button>
+  </div>
+  <div class="card admin-card"><h3>Синхронизация</h3><p><b>АТО, график и подотчёт</b> синхронизируются с Google Sheets. Ревизия и табель пока сохраняются локально — подключим их, когда будут определены целевые таблицы.</p><div class="actions-row"><button id="resetPinBtn" class="secondary" type="button">Сменить код доступа</button><button id="exportBtn" class="secondary" type="button">Выгрузить локальные данные</button></div></div>
+</section>
+</main>
+<div class="toast" id="toast">Сохранено</div>
+<dialog id="templateDialog"><form method="dialog" class="dialog-shell"><div class="dialog-top"><strong id="templateTitle">Документ</strong><button class="ghost" value="cancel">Закрыть</button></div><div class="template-form"><label>ФИО<input id="tplName" placeholder="ФИО сотрудника"></label><label>Должность / объект<input id="tplRole" placeholder="Должность, объект"></label><div class="field-row"><label>Дата с<input id="tplFrom" type="date"></label><label>Дата по<input id="tplTo" type="date"></label></div><label>Дополнительная информация<textarea id="tplExtra" rows="3" placeholder="Причина, пояснение и т.п."></textarea></label></div><div id="templatePreview" class="paper"></div><div class="dialog-actions"><button type="button" id="refreshTpl" class="secondary">Обновить</button><button type="button" id="printTpl" class="primary">Печать / PDF</button></div></form></dialog>
+
+<script>
+const API_URL="https://script.google.com/macros/s/AKfycbzcslCNU_WMkzsBe42LyEPKSoTEeVl2Rkeg6OZreN49t8klQk4g2Eg2OTzhtBHRUc9F/exec";
+const PIN_KEY='kruassan_manager_sync_pin';
+const storeKey='kruassan_manager_portal_v3';
+const today=new Date().toISOString().slice(0,10);
+
+const allObjects=['КК Багратиона','КК Зеленоградск','КК Красная','КК Ленинский','КК Мира','КК Невского','КК Победы','КК Светлогорск','ПК Зеленоградск','ПК Маркса'];
+const atoObjects=['Багратиона','Зеленоградск','Красная','Ленинский','Мира','Невского','Победы','Светлогорск','ПК Зеленоградск','ПК Маркса'];
+const scheduleObjects=['КК Победа','КК Зеленоградск','КК Красная','КК Светлогорск','КК Невский','КК Мира','КК Ленинский','КК Багратиона','ПК Зеленоградск','ПК Маркса'];
+const scheduleManagers={
+  'КК Победа':'Екатерина',
+  'КК Зеленоградск':'Семенов А.Г.',
+  'КК Красная':'Киричек Е.',
+  'КК Светлогорск':'Руданская С.',
+  'КК Невский':'Миляева Ольга',
+  'КК Мира':'Владимирцева Виктория',
+  'КК Багратиона':'Власюк О.Г.',
+  'ПК Зеленоградск':'Меркулова Екатерина',
+  'ПК Маркса':'Мизецкий Владислав'
+};
+const cashItems=[
+  {label:'Круассан Кафе · Багратиона',value:'Багратиона'},
+  {label:'Круассан Кафе · Зеленоградск',value:'Зеленоградск'},
+  {label:'Круассан Кафе · Красная',value:'Красная'},
+  {label:'Круассан Кафе · Ленинский',value:'Ленинский'},
+  {label:'Круассан Кафе · Мира',value:'Мира'},
+  {label:'Круассан Кафе · Невского',value:'Невского'},
+  {label:'Круассан Кафе · Победы',value:'Победы'},
+  {label:'Круассан Кафе · Светлогорск',value:'Светлогорск'},
+  {label:'Порто Кофе · Зеленоградск',value:'Порто Зеленоградск'},
+  {label:'Порто Кофе · Маркса',value:'Порто Маркса'}
+];
+
+const views=[...document.querySelectorAll('.view')];
+const homeBtn=document.getElementById('homeBtn');
+const toast=document.getElementById('toast');
+
+function showView(name){
+  views.forEach(v=>v.classList.toggle('active',v.id===name+'View'));
+  homeBtn.hidden=name==='home';
+  scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>showView(b.dataset.open));
+document.querySelectorAll('[data-back]').forEach(b=>b.onclick=()=>showView('home'));
+homeBtn.onclick=()=>showView('home');
+
+function fill(sel,arr){
+  document.querySelectorAll(sel).forEach(s=>s.innerHTML='<option value="">Выберите объект</option>'+arr.map(x=>`<option value="${x}">${x}</option>`).join(''));
+}
+fill('.all-object',allObjects);
+fill('.ato-object',atoObjects);
+fill('.schedule-object',scheduleObjects);
+document.querySelectorAll('.cash-object').forEach(s=>{
+  s.innerHTML='<option value="">Выберите объект</option>'+cashItems.map(x=>`<option value="${x.value}">${x.label}</option>`).join('');
+});
+document.querySelectorAll('input[type=date]').forEach(i=>{if(!i.value)i.value=today});
+
+function records(){try{return JSON.parse(localStorage.getItem(storeKey)||'[]')}catch{return[]}}
+function save(r){const a=records();a.push({...r,savedAt:new Date().toISOString()});localStorage.setItem(storeKey,JSON.stringify(a));}
+function notify(t='Сохранено'){toast.textContent=t;toast.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>toast.classList.remove('show'),2300)}
+
+function getPin(force=false){
+  let pin=force?'':(localStorage.getItem(PIN_KEY)||'');
+  if(!pin){
+    pin=prompt('Введите код доступа к рабочему порталу');
+    if(!pin) throw new Error('Код доступа не введён');
+    pin=pin.trim();
+    localStorage.setItem(PIN_KEY,pin);
+  }
+  return pin;
+}
+function authError(err){
+  if(String(err||'').toLowerCase().includes('неверный код')) localStorage.removeItem(PIN_KEY);
+}
+
+function jsonp(type,params={}){
+  return new Promise((resolve,reject)=>{
+    let pin;
+    try{pin=getPin()}catch(e){reject(e);return}
+    const cb='kruassan_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const u=new URL(API_URL);
+    u.searchParams.set('action','read');
+    u.searchParams.set('type',type);
+    u.searchParams.set('pin',pin);
+    u.searchParams.set('callback',cb);
+    Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v??''));
+    const sc=document.createElement('script');
+    const timer=setTimeout(()=>{cleanup();reject(new Error('Нет ответа от Google Sheets'))},15000);
+    function cleanup(){clearTimeout(timer);delete window[cb];sc.remove()}
+    window[cb]=(res)=>{
+      cleanup();
+      if(res&&res.ok) resolve(res.data);
+      else{const msg=res?.error||'Ошибка Google Sheets';authError(msg);reject(new Error(msg))}
+    };
+    sc.onerror=()=>{cleanup();reject(new Error('Не удалось подключиться к Google Sheets'))};
+    sc.src=u.toString();
+    document.body.appendChild(sc);
+  });
+}
+
+const pendingPosts=new Map();
+window.addEventListener('message',e=>{
+  const d=e.data;
+  if(!d||typeof d!=='object'||!d.requestId||!pendingPosts.has(d.requestId)) return;
+  const p=pendingPosts.get(d.requestId);
+  pendingPosts.delete(d.requestId);
+  p.cleanup();
+  if(d.ok) p.resolve(d.data);
+  else{authError(d.error);p.reject(new Error(d.error||'Ошибка сохранения'))}
+});
+
+function apiPost(type,data){
+  return new Promise((resolve,reject)=>{
+    let pin;
+    try{pin=getPin()}catch(e){reject(e);return}
+    const requestId='req_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const frame=document.createElement('iframe');
+    frame.name='sync_'+requestId;
+    frame.style.display='none';
+    const form=document.createElement('form');
+    form.method='POST';
+    form.action=API_URL;
+    form.target=frame.name;
+    form.style.display='none';
+    const inp=document.createElement('input');
+    inp.type='hidden';inp.name='payload';
+    inp.value=JSON.stringify({pin,type,data,requestId});
+    form.appendChild(inp);
+    document.body.append(frame,form);
+    const timer=setTimeout(()=>{
+      if(pendingPosts.has(requestId)){
+        pendingPosts.delete(requestId);
+        frame.remove();form.remove();
+        reject(new Error('Google Sheets не ответили. Повторите попытку.'));
+      }
+    },20000);
+    const cleanup=()=>{clearTimeout(timer);setTimeout(()=>{frame.remove();form.remove()},200)};
+    pendingPosts.set(requestId,{resolve,reject,cleanup});
+    form.submit();
+  });
+}
+
+function setBusy(form,on,text){
+  form.classList.toggle('field-loading',on);
+  const b=form.querySelector('button[type=submit]');
+  if(!b)return;
+  if(on){b.dataset.old=b.textContent;b.textContent=text||'Сохраняю…';b.disabled=true}
+  else{b.textContent=b.dataset.old||b.textContent;b.disabled=false}
+}
+
+function setNum(form,name,val){
+  const el=form.elements[name];
+  if(el) el.value=(val===null||val===undefined)?'':String(val);
+}
+
+// ATO: read + write
+const atoForm=document.getElementById('atoForm');
+const atoObject=atoForm.elements.object;
+async function loadAto(){
+  if(!atoObject.value)return;
+  try{
+    atoForm.classList.add('field-loading');
+    const d=await jsonp('ato',{object:atoObject.value});
+    atoForm.elements.manager.value=d.manager||'';
+    setNum(atoForm,'ato',d.ato);setNum(atoForm,'production',d.production);setNum(atoForm,'bar',d.bar);setNum(atoForm,'bakery',d.bakery);
+    notify(d.status==='Готово'?'Данные АТО загружены':'Объект ещё не заполнен');
+  }catch(e){notify('Ошибка: '+e.message)}finally{atoForm.classList.remove('field-loading')}
+}
+atoObject.addEventListener('change',loadAto);
+atoForm.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const d=Object.fromEntries(new FormData(atoForm).entries());
+  try{
+    setBusy(atoForm,true,'Записываю в таблицу…');
+    await apiPost('ato',d);
+    save({type:'АТО',...d});
+    notify('АТО записано в Google Sheets');
+  }catch(err){notify('Не сохранено: '+err.message)}finally{setBusy(atoForm,false)}
+});
+
+// Schedule
+function pad(n){return String(n).padStart(2,'0')}
+function ymd(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+function periodLabel(start,end){const f=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'long'});return `${f.format(start)} — ${f.format(end)}`}
+function halfPeriods(){
+  const now=new Date(),y=now.getFullYear(),m=now.getMonth(),p=[];
+  function add(y,m,half){const s=new Date(y,m,half===1?1:16);const e=half===1?new Date(y,m,15):new Date(y,m+1,0);p.push({s,e})}
+  add(y,m,1);add(y,m,2);add(y,m+1,1);
+  return p.filter(x=>x.e>=new Date(now.getFullYear(),now.getMonth(),now.getDate()-1));
+}
+const scheduleForm=document.getElementById('scheduleForm');
+const scheduleObject=scheduleForm.elements.object;
+const scheduleManager=scheduleForm.elements.manager;
+const periodSelect=document.getElementById('schedulePeriod');
+const periods=halfPeriods();
+periodSelect.innerHTML=periods.map((p,i)=>`<option value="${i}">${periodLabel(p.s,p.e)}</option>`).join('');
+
+function renderSchedule(){
+  const p=periods[+periodSelect.value||0],box=document.getElementById('scheduleList');
+  box.innerHTML='';
+  const fmt=new Intl.DateTimeFormat('ru-RU',{weekday:'short'});
+  for(let d=new Date(p.s);d<=p.e;d.setDate(d.getDate()+1)){
+    const date=new Date(d),row=document.createElement('div');
+    row.className='schedule-day';
+    row.innerHTML=`<div class="day-meta"><b>${pad(date.getDate())}</b><small>${fmt.format(date)}</small></div><div class="day-entry"><input name="day_${ymd(date)}" data-date="${ymd(date)}" placeholder="9-18 / Вых / задача"></div>`;
+    box.appendChild(row);
+  }
+}
+async function loadSchedule(){
+  const obj=scheduleObject.value;
+  if(!obj)return;
+  const p=periods[+periodSelect.value||0];
+  try{
+    scheduleForm.classList.add('field-loading');
+    const d=await jsonp('schedule',{object:obj,manager:scheduleManager.value||'',start:ymd(p.s),end:ymd(p.e)});
+    document.querySelectorAll('#scheduleList input[data-date]').forEach(i=>i.value='');
+    (d.entries||[]).forEach(x=>{const i=document.querySelector(`#scheduleList input[data-date="${x.date}"]`);if(i)i.value=x.value||''});
+    notify('График загружен из Google Sheets');
+  }catch(e){notify('Ошибка: '+e.message)}finally{scheduleForm.classList.remove('field-loading')}
+}
+periodSelect.onchange=()=>{renderSchedule();loadSchedule()};
+renderSchedule();
+scheduleObject.addEventListener('change',()=>{
+  if(!scheduleManager.value&&scheduleManagers[scheduleObject.value]) scheduleManager.value=scheduleManagers[scheduleObject.value];
+  loadSchedule();
+});
+let activeScheduleInput=null;
+document.getElementById('scheduleList').addEventListener('focusin',e=>{if(e.target.tagName==='INPUT')activeScheduleInput=e.target});
+document.querySelectorAll('[data-shift]').forEach(b=>b.onclick=()=>{if(activeScheduleInput){activeScheduleInput.value=b.dataset.shift;activeScheduleInput.focus()}else notify('Сначала выберите день')});
+scheduleForm.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const entries=[...document.querySelectorAll('#scheduleList input[data-date]')].map(i=>({date:i.dataset.date,value:i.value.trim()}));
+  const data={object:scheduleObject.value,manager:scheduleManager.value.trim(),entries};
+  try{
+    setBusy(scheduleForm,true,'Записываю график…');
+    const r=await apiPost('schedule',data);
+    save({type:'График',...data});
+    notify(`График записан · дней: ${r.saved??entries.length}`);
+  }catch(err){notify('Не сохранено: '+err.message)}finally{setBusy(scheduleForm,false)}
+});
+
+// Cash: read + write
+const cashForm=document.getElementById('expensesForm');
+const cashObject=cashForm.elements.object;
+async function loadCash(){
+  if(!cashObject.value)return;
+  try{
+    cashForm.classList.add('field-loading');
+    const d=await jsonp('cash',{object:cashObject.value});
+    cashForm.elements.manager.value=d.manager||'';
+    cashForm.elements.amount.value=(d.amount===null||d.amount===undefined)?'':d.amount;
+    cashForm.elements.purpose.value=d.purpose||'';
+    cashForm.elements.comment.value=d.comment||'';
+    notify(d.status==='Заполнено'?'Подотчёт загружен':'Объект ещё не заполнен');
+  }catch(e){notify('Ошибка: '+e.message)}finally{cashForm.classList.remove('field-loading')}
+}
+cashObject.addEventListener('change',loadCash);
+cashForm.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const d=Object.fromEntries(new FormData(cashForm).entries());
+  try{
+    setBusy(cashForm,true,'Записываю в таблицу…');
+    await apiPost('cash',d);
+    save({type:'Подотчёт',...d});
+    notify('Подотчёт записан в Google Sheets');
+  }catch(err){notify('Не сохранено: '+err.message)}finally{setBusy(cashForm,false)}
+});
+
+// Local-only sections for now
+function bindLocal(formId,type){
+  document.getElementById(formId).addEventListener('submit',e=>{
+    e.preventDefault();
+    const d=Object.fromEntries(new FormData(e.currentTarget).entries());
+    save({type,...d});
+    notify('Сохранено на устройстве');
+  });
+}
+bindLocal('auditForm','Ревизия');
+bindLocal('timesheetForm','Табель');
+
+function csvEscape(v=''){return `"${String(v).replaceAll('"','""')}"`}
+document.getElementById('exportBtn').onclick=()=>{
+  const rows=records();if(!rows.length)return notify('Пока нет локальных данных');
+  const headers=[...new Set(rows.flatMap(r=>Object.keys(r)))];
+  const csv='\ufeff'+[headers.join(';'),...rows.map(r=>headers.map(h=>csvEscape(r[h]??'')).join(';'))].join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=`manager-portal-${today}.csv`;a.click();URL.revokeObjectURL(a.href);
+};
+document.getElementById('resetPinBtn').onclick=()=>{
+  localStorage.removeItem(PIN_KEY);
+  try{const p=getPin(true);notify('Новый код сохранён на устройстве')}catch(e){notify(e.message)}
+};
+
+// Document templates
+const dialog=document.getElementById('templateDialog'),tplTitle=document.getElementById('templateTitle'),tplName=document.getElementById('tplName'),tplRole=document.getElementById('tplRole'),tplFrom=document.getElementById('tplFrom'),tplTo=document.getElementById('tplTo'),tplExtra=document.getElementById('tplExtra'),preview=document.getElementById('templatePreview');
+let activeTemplate='vacation';
+const titles={vacation:'Заявление на отпуск',unpaid:'Заявление без сохранения зарплаты',dismissal:'Заявление на увольнение',memo:'Служебная записка'};
+function fmtDate(v){return v?new Date(v+'T00:00:00').toLocaleDateString('ru-RU'):'____________'}
+function buildTemplate(){
+  const name=tplName.value||'____________________________',role=tplRole.value||'____________________________',from=fmtDate(tplFrom.value),to=fmtDate(tplTo.value),extra=tplExtra.value.trim();let text='';
+  if(activeTemplate==='vacation')text=`Генеральному директору\nООО «КРУАССАН КАФЕ»\n\nот ${role}\n${name}\n\n\nЗАЯВЛЕНИЕ\n\nПрошу предоставить мне ежегодный оплачиваемый отпуск с ${from} по ${to}.\n${extra?`\nДополнительно: ${extra}`:''}\n\nДата: ____________        Подпись: ____________ / ${name}`;
+  else if(activeTemplate==='unpaid')text=`Генеральному директору\nООО «КРУАССАН КАФЕ»\n\nот ${role}\n${name}\n\n\nЗАЯВЛЕНИЕ\n\nПрошу предоставить мне отпуск без сохранения заработной платы с ${from} по ${to}.\n${extra?`\nПричина: ${extra}`:''}\n\nДата: ____________        Подпись: ____________ / ${name}`;
+  else if(activeTemplate==='dismissal')text=`Генеральному директору\nООО «КРУАССАН КАФЕ»\n\nот ${role}\n${name}\n\n\nЗАЯВЛЕНИЕ\n\nПрошу уволить меня по собственному желанию с ${from}.\n${extra?`\nДополнительно: ${extra}`:''}\n\nДата: ____________        Подпись: ____________ / ${name}`;
+  else text=`Генеральному директору\nООО «КРУАССАН КАФЕ»\n\nот ${role}\n${name}\n\n\nСЛУЖЕБНАЯ ЗАПИСКА\n\n${extra||'Текст служебной записки.'}\n\nДата: ____________        Подпись: ____________ / ${name}`;
+  preview.textContent=text;
+}
+document.querySelectorAll('[data-template]').forEach(b=>b.onclick=()=>{activeTemplate=b.dataset.template;tplTitle.textContent=titles[activeTemplate];tplName.value='';tplRole.value='';tplFrom.value=today;tplTo.value=today;tplExtra.value='';buildTemplate();dialog.showModal()});
+document.getElementById('refreshTpl').onclick=buildTemplate;
+[tplName,tplRole,tplFrom,tplTo,tplExtra].forEach(x=>x.oninput=buildTemplate);
+document.getElementById('printTpl').onclick=()=>{buildTemplate();print()};
+</script>
+
+</body></html>
