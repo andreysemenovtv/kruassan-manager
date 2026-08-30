@@ -552,7 +552,7 @@ async function loadLeader(){
     const atoVals=units.filter(x=>x.ato&&x.ato.status==='Готово'&&x.ato.ato!=null).map(x=>Number(x.ato.ato));
     const avgMetric=(arr)=>arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null;
     const atoAvg=avgMetric(atoVals);
-    const productionVals=units.filter(x=>x.ato&&x.ato.status==='Готовн'&&x.ato.production!=null).map(x=>Number(x.ato.production));
+    const productionVals=units.filter(x=>x.ato&&x.ato.status==='Готово'&&x.ato.production!=null).map(x=>Number(x.ato.production));
     const barVals=units.filter(x=>x.ato&&x.ato.status==='Готово'&&x.ato.bar!=null).map(x=>Number(x.ato.bar));
     const bakeryVals=units.filter(x=>x.ato&&x.ato.status==='Готово'&&x.ato.bakery!=null).map(x=>Number(x.ato.bakery));
     const productionAvg=avgMetric(productionVals),barAvg=avgMetric(barVals),bakeryAvg=avgMetric(bakeryVals);
