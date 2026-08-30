@@ -1,0 +1,47 @@
+name: Make ATO full month
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mark ATO as monthly
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          reps={
+            '<span class="tile-title">АТО</span><span class="tile-desc">Общий АТО по объекту и по подразделениям</span>':'<span class="tile-title">АТО</span><span class="tile-desc">Общий АТО за полный месяц по объекту и подразделениям</span>',
+            '<div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Руководителю</div><h2>Вся сеть</h2><p>Единая сводка по подразделениям. Данные загружаются напрямую из рабочих Google Sheets.</p></div>':'<div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Руководителю</div><h2>Вся сеть</h2><p>Единая сводка по подразделениям. Период ниже относится к графику; АТО учитывается за полный календарный месяц.</p></div>',
+            '<div class="section-label"><h3>Подразделения</h3><span>Общий АТО · подразделения · наличка · график</span></div>':'<div class="section-label"><h3>Подразделения</h3><span>АТО за месяц · подразделения · наличка · график</span></div>',
+            '<div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Премирование</div><h2>Результаты АТО</h2><p>Введите показатели от 0,00 до 100,00. Процент добавится автоматически.</p></div>':'<div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Премирование</div><h2>Результаты АТО за месяц</h2><p>Введите итоговые показатели за полный календарный месяц от 0,00 до 100,00. Деления на две половины месяца для АТО нет.</p></div>',
+            '<label>Общий АТО по объекту<div class="percent-wrap">':'<label>Общий АТО по объекту за месяц<div class="percent-wrap">',
+            '<div class="form-help">Допустимы сотые: например 92,60. При выборе объекта уже сохранённые значения подтянутся из Google Sheets.</div>':'<div class="form-help"><b>Период АТО — полный календарный месяц.</b> Допустимы сотые: например 92,60. При выборе объекта уже сохранённые значения подтянутся из Google Sheets.</div>',
+            '<small>Общий АТО по объекту</small>':'<small>Общий АТО за месяц</small>',
+            '<div class="kpi-label">АТО заполнено</div>':'<div class="kpi-label">АТО за месяц</div>'
+          }
+          missing=[]
+          for old,new in reps.items():
+            if old not in s:
+              missing.append(old[:90])
+            else:
+              s=s.replace(old,new,1)
+          if missing:
+            raise SystemExit('Missing anchors: '+repr(missing))
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit portal update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Use full-month ATO wording"
+          git push
