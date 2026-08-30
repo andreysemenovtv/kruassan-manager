@@ -12,32 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Add power of attorney document
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-
-          card='    <button class="doc-card" data-template="parent"><span class="doc-icon">18−</span><span><b>Согласие родителя / представителя</b><small>Для несовершеннолетнего</small></span><span>›</span></button>'
-          new_card=card+'\n    <button class="doc-card" data-template="power"><span class="doc-icon">ДВ</span><span><b>Доверенность на получение заработной платы</b><small>Получение денежных средств другим лицом</small></span><span>›</span></button>'
-          if card not in s:
-            raise SystemExit('document card anchor not found')
-          s=s.replace(card,new_card,1)
-
-          anchor='  parent:{title:\'Согласие родителя / законного представителя\''
-          if anchor not in s:
-            raise SystemExit('parent template anchor not found')
-
-          power="""  power:{title:'Доверенность на получение заработной платы',fields:[
-    field('placeDate','Место и дата выдачи доверенности прописью','text',true,'Например: г. Калининград, двадцатого июля две тысячи двадцать шестого года'),
-    field('principalCitizenship','Гражданство доверителя'),field('principalName','ФИО доверителя полностью','text',true),field('principalBirth','Дата рождения доверителя','date'),field('principalPassportSeries','Паспорт доверителя: серия'),field('principalPassportNo','Паспорт доверителя: номер'),field('principalIssuedBy','Кем выдан паспорт доверителя','textarea',true),field('principalRegistration','Адрес регистрации доверителя','textarea',true),field('principalResidence','Адрес проживания доверителя','textarea',true),
-    field('agentCitizenship','Гражданство доверенного лица'),field('agentName','ФИО доверенного лица полностью','text',true),field('agentBirth','Дата рождения доверенного лица','date'),field('agentPassportSeries','Паспорт доверенного лица: серия'),field('agentPassportNo','Паспорт доверенного лица: номер'),field('agentIssuedBy','Кем выдан паспорт доверенного лица','textarea',true),field('agentRegistration','Адрес регистрации доверенного лица','textarea',true),field('agentResidence','Адрес проживания доверенного лица','textarea',true),
-    field('employer','Наименование работодателя / кассы','text',true),field('employerAddress','Адрес работодателя','textarea',true),field('period','Период, за который получить заработную плату','text',true),field('validMonths','Срок действия доверенности, месяцев')
-  ],build(){return `<div class="doc-title">ДОВЕРЕННОСТЬ</div><div class="doc-body"><p style="text-align:center">${esc(v('placeDate','____________________________________________'))}<br><small>(место и дата выдачи доверенности прописью)</small></p><p>Я, гражданин(ка) ${esc(v('principalCitizenship'))}, <b>${esc(v('principalName'))}</b>, ${raw('principalBirth')?esc(fmtDate(raw('principalBirth'))) : '____________'} г. рождения, паспорт серии ${esc(v('principalPassportSeries','________'))} № ${esc(v('principalPassportNo','________'))}, выдан ${esc(v('principalIssuedBy'))}, зарегистрированный(ая) по адресу: ${esc(v('principalRegistration'))}, проживающий(ая) по адресу: ${esc(v('principalResidence'))}, настоящей доверенностью уполномочиваю гражданина(ку) ${esc(v('agentCitizenship'))}, <b>${esc(v('agentName'))}</b>, ${raw('agentBirth')?esc(fmtDate(raw('agentBirth'))) : '____________'} г. рождения, паспорт серии ${esc(v('agentPassportSeries','________'))} № ${esc(v('agentPassportNo','________'))}, выдан ${esc(v('agentIssuedBy'))}, зарегистрированного(ую) по адресу: ${esc(v('agentRegistration'))}, проживающего(ую) по адресу: ${esc(v('agentResidence'))}, получить в кассе ${esc(v('employer'))}, находящегося по адресу: ${esc(v('employerAddress'))}, причитающуюся мне заработную плату за ${esc(v('period','____________________________'))}.</p><p><b>${esc(v('agentName'))}</b> вправе расписываться за меня и выполнять все иные действия, связанные с данным поручением.</p><p>Полномочия по настоящей доверенности не могут быть переданы другим лицам.</p><p>Срок действия доверенности — ${esc(v('validMonths','________'))} месяца(ев).</p><p>Подпись доверенного лица гр. ____________________________ / ${esc(v('agentName'))} / подтверждаю.</p></div><div class="doc-sign"><span>Доверитель:<br><br>______________<br><small>(подпись)</small></span><span>${esc(v('principalName'))}<br><small>(Ф.И.О.)</small></span></div><div class="doc-body" style="margin-top:34px"><p>«___» __________________ 20__ г. настоящая доверенность удостоверена мною ________________________________</p><p><small>(должность, Ф.И.О. уполномоченного лица организации, где работает доверитель)</small></p><p>______________ / ________________________________<br><small>(подпись) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (Ф.И.О.)</small></p></div>`}},
-"""
-          s=s.replace(anchor,power+anchor,1)
-          p.write_text(s,encoding='utf-8')
-          PY
+        run: python scripts/add_power_template.py
       - name: Commit portal update
         run: |
           git config user.name "github-actions[bot]"
