@@ -143,7 +143,7 @@ dialog{width:min(720px,calc(100% - 18px));max-height:92vh;border:0;border-radius
     </button>
     <button class="tile soft-gold" data-open="ato">
       <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19.5V12h4v7.5M10 19.5V7h4v12.5M16 19.5V3.5h4v16"/><path d="M3 20.5h18"/></svg></span>
-      <span class="tile-title">АТО</span><span class="tile-desc">Общий АТО по объекту и по подразделениям</span><span class="tile-arrow">›</span>
+      <span class="tile-title">АТО</span><span class="tile-desc">Общий АТО за полный месяц по объекту и подразделениям</span><span class="tile-arrow">›</span>
     </button>
     <button class="tile soft-sage" data-open="expenses">
       <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="5" width="17" height="14" rx="3"/><path d="M16.2 10h4.3v4h-4.3a2 2 0 0 1 0-4Z"/><circle cx="16.5" cy="12" r=".6" fill="currentColor"/></svg></span>
@@ -169,11 +169,11 @@ dialog{width:min(720px,calc(100% - 18px));max-height:92vh;border:0;border-radius
 
 <!-- LEADER_SECTION -->
 <section id="leaderView" class="view">
-  <div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Руководителю</div><h2>Вся сеть</h2><p>Единая сводка по подразделениям. Данные загружаются напрямую из рабочих Google Sheets.</p></div>
+  <div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Руководителю</div><h2>Вся сеть</h2><p>Единая сводка по подразделениям. Период ниже относится к графику; АТО учитывается за полный календарный месяц.</p></div>
   <div class="card leader-toolbar"><label>Период графика<select id="leaderPeriod"></select></label><button class="primary" type="button" id="leaderRefresh">Обновить данные</button></div>
   <div id="leaderLoading" class="leader-loading">Откройте раздел — данные загрузятся автоматически</div>
   <div id="leaderSummary" class="leader-summary"></div>
-  <div class="section-label"><h3>Подразделения</h3><span>Общий АТО · подразделения · наличка · график</span></div>
+  <div class="section-label"><h3>Подразделения</h3><span>АТО за месяц · подразделения · наличка · график</span></div>
   <div id="leaderUnits" class="leader-list"></div>
   <div class="section-label"><h3>Шефы</h3><span>Заполнение графика</span></div>
   <div id="leaderChefs" class="leader-list"></div>
@@ -182,16 +182,16 @@ dialog{width:min(720px,calc(100% - 18px));max-height:92vh;border:0;border-radius
 </section>
 
 <section id="atoView" class="view">
-  <div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Премирование</div><h2>Результаты АТО</h2><p>Введите показатели от 0,00 до 100,00. Процент добавится автоматически.</p></div>
+  <div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">Премирование</div><h2>Результаты АТО за месяц</h2><p>Введите итоговые показатели за полный календарный месяц от 0,00 до 100,00. Деления на две половины месяца для АТО нет.</p></div>
   <form id="atoForm" class="card form-card">
     <div class="field-row"><label>Объект<select name="object" class="ato-object" required></select></label><label>Менеджер<input name="manager" placeholder="ФИО" required></label></div>
     <div class="ato-grid">
-      <label>Общий АТО по объекту<div class="percent-wrap"><input type="number" name="ato" inputmode="decimal" min="0" max="100" step="0.01" placeholder="92,60" required><span>%</span></div></label>
+      <label>Общий АТО по объекту за месяц<div class="percent-wrap"><input type="number" name="ato" inputmode="decimal" min="0" max="100" step="0.01" placeholder="92,60" required><span>%</span></div></label>
       <label>Технологи производства<div class="percent-wrap"><input type="number" name="production" inputmode="decimal" min="0" max="100" step="0.01" placeholder="90,91" required><span>%</span></div></label>
       <label>Бар<div class="percent-wrap"><input type="number" name="bar" inputmode="decimal" min="0" max="100" step="0.01" placeholder="96,43" required><span>%</span></div></label>
       <label>Пекарня<div class="percent-wrap"><input type="number" name="bakery" inputmode="decimal" min="0" max="100" step="0.01" placeholder="93,55" required><span>%</span></div></label>
     </div>
-    <div class="form-help">Допустимы сотые: например 92,60. При выборе объекта уже сохранённые значения подтянутся из Google Sheets.</div>
+    <div class="form-help"><b>Период АТО — полный календарный месяц.</b> Допустимы сотые: например 92,60. При выборе объекта уже сохранённые значения подтянутся из Google Sheets.</div>
     <button class="primary" type="submit">Сохранить АТО</button>
   </form>
 </section>
@@ -592,7 +592,7 @@ function leaderUnitHtml(r){
   const atoOk=a&&a.status==='Готово',cashOk=c&&c.status==='Заполнено',schedOk=g&&g.ok;
   const overall=atoOk&&cashOk&&schedOk;
   const manager=(a&&a.manager)||(c&&c.manager)||r.u.manager||'Менеджер не указан';
-  return `<div class="unit-card"><div class="unit-top"><div><div class="unit-name">${r.u.title}</div><div class="unit-manager">${manager}</div></div><span class="unit-state ${overall?'ok':'warn'}">${overall?'Всё заполнено':'Есть пробелы'}</span></div><div class="unit-statuses"><div class="status-cell" style="grid-column:1/-1"><small>Общий АТО по объекту</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.ato):'Не заполнено'}</b></div><div class="status-cell"><small>Технологи производства</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.production):'—'}</b></div><div class="status-cell"><small>Бар</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.bar):'—'}</b></div><div class="status-cell"><small>Пекарня</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.bakery):'—'}</b></div><div class="status-cell"><small>Подотчёт</small><b class="${cashOk?'good':'bad'}">${cashOk?money(c.amount):'Не заполнено'}</b></div><div class="status-cell"><small>График</small><b class="${schedOk?'good':'bad'}">${g?g.filled+' из '+g.total:'Нет ответа'}</b></div></div></div>`;
+  return `<div class="unit-card"><div class="unit-top"><div><div class="unit-name">${r.u.title}</div><div class="unit-manager">${manager}</div></div><span class="unit-state ${overall?'ok':'warn'}">${overall?'Всё заполнено':'Есть пробелы'}</span></div><div class="unit-statuses"><div class="status-cell" style="grid-column:1/-1"><small>Общий АТО за месяц</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.ato):'Не заполнено'}</b></div><div class="status-cell"><small>Технологи производства</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.production):'—'}</b></div><div class="status-cell"><small>Бар</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.bar):'—'}</b></div><div class="status-cell"><small>Пекарня</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.bakery):'—'}</b></div><div class="status-cell"><small>Подотчёт</small><b class="${cashOk?'good':'bad'}">${cashOk?money(c.amount):'Не заполнено'}</b></div><div class="status-cell"><small>График</small><b class="${schedOk?'good':'bad'}">${g?g.filled+' из '+g.total:'Нет ответа'}</b></div></div></div>`;
 }
 function leaderChefHtml(r){
   const g=r.schedule,ok=g&&g.ok;
@@ -617,7 +617,7 @@ async function loadLeader(){
     const cashDone=units.filter(x=>x.cash&&x.cash.status==='Заполнено').length;
     const cashTotal=units.reduce((sum,x)=>sum+(x.cash&&Number.isFinite(Number(x.cash.amount))?Number(x.cash.amount):0),0);
     const schedulesDone=units.filter(x=>x.schedule&&x.schedule.ok).length;
-    summaryBox.innerHTML=`<div class="kpi-card"><div class="kpi-label">АТО заполнено</div><div class="kpi-value">${atoDone}/${units.length}</div><div class="kpi-note">Объект: ${atoAvg==null?'—':atoAvg.toFixed(1).replace('.',',')+'%'}<br>Технологи: ${productionAvg==null?'—':productionAvg.toFixed(1).replace('.',',')+'%'} · Бар: ${barAvg==null?'—':barAvg.toFixed(1).replace('.',',')+'%'} · Пекарня: ${bakeryAvg==null?'—':bakeryAvg.toFixed(1).replace('.',',')+'%'}</div></div><div class="kpi-card"><div class="kpi-label">Подотчёт</div><div class="kpi-value">${money(cashTotal)}</div><div class="kpi-note">Заполнено: ${cashDone}/${units.length}</div></div><div class="kpi-card"><div class="kpi-label">Графики точек</div><div class="kpi-value">${schedulesDone}/${units.length}</div><div class="kpi-note">Полностью заполнены</div></div><div class="kpi-card"><div class="kpi-label">Шефы</div><div class="kpi-value">${chefs.filter(x=>x.schedule&&x.schedule.ok).length}/${chefs.length}</div><div class="kpi-note">График на выбранный период</div></div>`;
+    summaryBox.innerHTML=`<div class="kpi-card"><div class="kpi-label">АТО за месяц</div><div class="kpi-value">${atoDone}/${units.length}</div><div class="kpi-note">Объект: ${atoAvg==null?'—':atoAvg.toFixed(1).replace('.',',')+'%'}<br>Технологи: ${productionAvg==null?'—':productionAvg.toFixed(1).replace('.',',')+'%'} · Бар: ${barAvg==null?'—':barAvg.toFixed(1).replace('.',',')+'%'} · Пекарня: ${bakeryAvg==null?'—':bakeryAvg.toFixed(1).replace('.',',')+'%'}</div></div><div class="kpi-card"><div class="kpi-label">Подотчёт</div><div class="kpi-value">${money(cashTotal)}</div><div class="kpi-note">Заполнено: ${cashDone}/${units.length}</div></div><div class="kpi-card"><div class="kpi-label">Графики точек</div><div class="kpi-value">${schedulesDone}/${units.length}</div><div class="kpi-note">Полностью заполнены</div></div><div class="kpi-card"><div class="kpi-label">Шефы</div><div class="kpi-value">${chefs.filter(x=>x.schedule&&x.schedule.ok).length}/${chefs.length}</div><div class="kpi-note">График на выбранный период</div></div>`;
     const alerts=[];
     units.forEach(x=>{if(!x.ato||x.ato.status!=='Готово')alerts.push(`${x.u.title}: не заполнено АТО`);if(!x.cash||x.cash.status!=='Заполнено')alerts.push(`${x.u.title}: не заполнен подотчёт`);if(!x.schedule||!x.schedule.ok)alerts.push(`${x.u.title}: график ${x.schedule?x.schedule.filled+' из '+x.schedule.total:'не загружен'}`)});
     chefs.forEach(x=>{if(!x.schedule||!x.schedule.ok)alerts.push(`${x.u.title}: график ${x.schedule?x.schedule.filled+' из '+x.schedule.total:'не загружен'}`)});
