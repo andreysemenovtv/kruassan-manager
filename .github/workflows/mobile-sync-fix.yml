@@ -18,23 +18,15 @@ jobs:
           fetch-depth: 0
 
       - name: Patch schedule date mapping
-        shell: python
         run: |
+          python3 - <<'PY'
           from pathlib import Path
 
           path = Path('index.html')
           s = path.read_text(encoding='utf-8')
 
           old = "function ymd(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}"
-          new = """function ymd(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
-function shiftScheduleDate(s,days){
-  const [y,m,d]=String(s).split('-').map(Number);
-  const dt=new Date(Date.UTC(y,m-1,d));
-  dt.setUTCDate(dt.getUTCDate()+days);
-  return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth()+1)}-${pad(dt.getUTCDate())}`;
-}
-function serverScheduleDate(s){return shiftScheduleDate(s,-1)}
-function clientScheduleDate(s){return shiftScheduleDate(s,1)}"""
+          new = "function ymd(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}\nfunction shiftScheduleDate(s,days){\n  const [y,m,d]=String(s).split('-').map(Number);\n  const dt=new Date(Date.UTC(y,m-1,d));\n  dt.setUTCDate(dt.getUTCDate()+days);\n  return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth()+1)}-${pad(dt.getUTCDate())}`;\n}\nfunction serverScheduleDate(s){return shiftScheduleDate(s,-1)}\nfunction clientScheduleDate(s){return shiftScheduleDate(s,1)}"
           if 'function serverScheduleDate' not in s:
               s = s.replace(old, new)
 
@@ -54,6 +46,7 @@ function clientScheduleDate(s){return shiftScheduleDate(s,1)}"""
           )
 
           path.write_text(s, encoding='utf-8')
+          PY
 
       - name: Commit patch
         run: |
