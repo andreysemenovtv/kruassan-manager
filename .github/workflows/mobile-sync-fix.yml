@@ -1,4 +1,4 @@
-name: Fix mobile Google Sheets sync
+name: Fix schedule date timezone mapping
 
 on:
   push:
@@ -16,61 +16,45 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Patch mobile sync transport
+
+      - name: Patch schedule date mapping
         shell: python
         run: |
           from pathlib import Path
-          import re
 
           path = Path('index.html')
           s = path.read_text(encoding='utf-8')
 
-          pattern = re.compile(
-              r"function jsonp\(type,params=\{\}\)\{.*?\nfunction setBusy\(form,on,text\)\{",
-              re.S,
+          old = "function ymd(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}"
+          new = """function ymd(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+function shiftScheduleDate(s,days){
+  const [y,m,d]=String(s).split('-').map(Number);
+  const dt=new Date(Date.UTC(y,m-1,d));
+  dt.setUTCDate(dt.getUTCDate()+days);
+  return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth()+1)}-${pad(dt.getUTCDate())}`;
+}
+function serverScheduleDate(s){return shiftScheduleDate(s,-1)}
+function clientScheduleDate(s){return shiftScheduleDate(s,1)}"""
+          if 'function serverScheduleDate' not in s:
+              s = s.replace(old, new)
+
+          s = s.replace(
+              "const d=await jsonp('schedule',{object:obj,manager:scheduleManager.value||'',start:ymd(p.s),end:ymd(p.e)});",
+              "const d=await jsonp('schedule',{object:obj,manager:scheduleManager.value||'',start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))});"
           )
 
-          replacement = r'''function jsonpRequest(type,params={},action='read'){
-            return new Promise((resolve,reject)=>{
-              let pin;
-              try{pin=getPin()}catch(e){reject(e);return}
-              const cb='kruassan_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-              const u=new URL(API_URL);
-              u.searchParams.set('action',action);
-              u.searchParams.set('type',type);
-              u.searchParams.set('pin',pin);
-              u.searchParams.set('callback',cb);
-              Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v??''));
-              const sc=document.createElement('script');
-              const timer=setTimeout(()=>{cleanup();reject(new Error('Нет ответа от Google Sheets'))},20000);
-              function cleanup(){clearTimeout(timer);delete window[cb];sc.remove()}
-              window[cb]=(res)=>{
-                cleanup();
-                if(res&&res.ok) resolve(res.data);
-                else{const msg=res?.error||'Ошибка Google Sheets';authError(msg);reject(new Error(msg))}
-              };
-              sc.onerror=()=>{cleanup();reject(new Error('Не удалось подключиться к Google Sheets'))};
-              sc.src=u.toString();
-              document.body.appendChild(sc);
-            });
-          }
+          s = s.replace(
+              "(d.entries||[]).forEach(x=>{const i=document.querySelector(`#scheduleList input[data-date=\"${x.date}\"]`);if(i)i.value=x.value||''});",
+              "(d.entries||[]).forEach(x=>{const shownDate=clientScheduleDate(x.date);const i=document.querySelector(`#scheduleList input[data-date=\"${shownDate}\"]`);if(i)i.value=x.value||''});"
+          )
 
-          function jsonp(type,params={}){
-            return jsonpRequest(type,params,'read');
-          }
+          s = s.replace(
+              "const entries=[...document.querySelectorAll('#scheduleList input[data-date]')].map(i=>({date:i.dataset.date,value:i.value.trim()}));",
+              "const entries=[...document.querySelectorAll('#scheduleList input[data-date]')].map(i=>({date:serverScheduleDate(i.dataset.date),value:i.value.trim()}));"
+          )
 
-          function apiPost(type,data){
-            return jsonpRequest(type,{data:JSON.stringify(data)},'write');
-          }
+          path.write_text(s, encoding='utf-8')
 
-          function setBusy(form,on,text){'''
-
-          new_s, n = pattern.subn(replacement, s, count=1)
-          if n == 0:
-              print('No patch needed or target not found.')
-          else:
-              path.write_text(new_s, encoding='utf-8')
-              print('Patched index.html for mobile JSONP writes.')
       - name: Commit patch
         run: |
           if git diff --quiet; then
@@ -80,5 +64,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git commit -m "Fix mobile Google Sheets sync"
+          git commit -m "Fix schedule date timezone mapping"
           git push
