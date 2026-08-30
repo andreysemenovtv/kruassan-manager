@@ -3,47 +3,28 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 jobs:
   diagnose:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Test idempotent ATO write
+      - name: Test idempotent ATO write without manager
         run: |
           python - <<'PY'
           import json,re,urllib.parse,urllib.request
           BASE='https://script.google.com/macros/s/AKfycbzcslCNU_WMkzsBe42LyEPKSoTEeVl2Rkeg6OZreN49t8klQk4g2Eg2OTzhtBHRUc9F/exec'
           def call(params):
               q=dict(params);q['callback']='cb'
-              url=BASE+'?'+urllib.parse.urlencode(q)
-              with urllib.request.urlopen(url,timeout=45) as r:
-                  text=r.read().decode('utf-8','replace')
+              with urllib.request.urlopen(BASE+'?'+urllib.parse.urlencode(q),timeout=45) as r:text=r.read().decode('utf-8','replace')
               m=re.search(r'cb\((.*)\)\s*;?\s*$',text,re.S)
-              if not m:
-                  return {'parse_error':text[:1000]}
-              return json.loads(m.group(1))
-          read=call({'action':'read','type':'ato','pin':'123','object':'Багратиона'})
-          print('READ=',json.dumps(read,ensure_ascii=False))
-          if not read.get('ok'):
-              raise SystemExit('ATO read failed')
-          d=read.get('data') or {}
-          payload={
-              'object':'Багратиона',
-              'manager':d.get('manager') or 'Власюк О.Г.',
-              'ato':d.get('ato'),
-              'production':d.get('production'),
-              'bar':d.get('bar'),
-              'bakery':d.get('bakery'),
-          }
-          print('IDEMPOTENT_PAYLOAD=',json.dumps(payload,ensure_ascii=False))
-          write=call({'action':'write','type':'ato','pin':'123','data':json.dumps(payload,ensure_ascii=False,separators=(',',':'))})
-          print('WRITE_CURRENT=',json.dumps(write,ensure_ascii=False))
-          if not write.get('ok'):
-              payload2=dict(payload,overall=payload.get('ato'),technology=payload.get('production'))
-              write2=call({'action':'write','type':'ato','pin':'123','data':json.dumps(payload2,ensure_ascii=False,separators=(',',':'))})
-              print('WRITE_WITH_ALIASES=',json.dumps(write2,ensure_ascii=False))
-          reread=call({'action':'read','type':'ato','pin':'123','object':'Багратиона'})
-          print('REREAD=',json.dumps(reread,ensure_ascii=False))
+              return json.loads(m.group(1)) if m else {'raw':text[:500]}
+          before=call({'action':'read','type':'ato','pin':'123','object':'Багратиона'})
+          print('BEFORE=',json.dumps(before,ensure_ascii=False))
+          d=before['data']
+          payload={'object':'Багратиона','ato':d['ato'],'production':d['production'],'bar':d['bar'],'bakery':d['bakery']}
+          result=call({'action':'write','type':'ato','pin':'123','data':json.dumps(payload,ensure_ascii=False,separators=(',',':'))})
+          print('WRITE_NO_MANAGER=',json.dumps(result,ensure_ascii=False))
+          after=call({'action':'read','type':'ato','pin':'123','object':'Багратиона'})
+          print('AFTER=',json.dumps(after,ensure_ascii=False))
+          if not result.get('ok'): raise SystemExit('write without manager failed: '+str(result.get('error')))
           PY
