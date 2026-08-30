@@ -394,15 +394,7 @@ function records(){try{const v=JSON.parse(localStorage.getItem(storeKey)||'[]');
 function save(r){try{const a=records();a.push({...r,savedAt:new Date().toISOString()});if(a.length>500)a.splice(0,a.length-500);localStorage.setItem(storeKey,JSON.stringify(a))}catch(e){notify('Не удалось сохранить локально: хранилище устройства недоступно')}}
 function notify(t='Сохранено'){toast.textContent=t;toast.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>toast.classList.remove('show'),2300)}
 
-function getPin(force=false){
-  const pin = "123";
-
-  try {
-    localStorage.setItem(PIN_KEY, pin);
-  } catch(e) {}
-
-  return pin;
-}
+function getPin(){return "123"}
 function authError(err){
   if(String(err||'').toLowerCase().includes('неверный код')) localStorage.removeItem(PIN_KEY);
 }
@@ -418,7 +410,8 @@ function drainJsonpQueue(){
 }
 function jsonpRequest(type,params={},action='read'){
   return new Promise((resolve,reject)=>{
-    jsonpQueue.push(done=>{
+    const enqueue=action==='write'?'unshift':'push';
+    jsonpQueue[enqueue](done=>{
       let pin;
       try{pin=getPin()}catch(e){done();reject(e);return}
       const cb='kruassan_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
@@ -439,15 +432,17 @@ function jsonpRequest(type,params={},action='read'){
 const READ_CACHE_TTL=15000;
 const readCache=new Map();
 const readInflight=new Map();
+let readGeneration=0;
 function readKey(type,params){return JSON.stringify([type,Object.entries(params).sort(([a],[b])=>a.localeCompare(b))])}
 function jsonp(type,params={}){
   const key=readKey(type,params),now=Date.now(),cached=readCache.get(key);
   if(cached&&now-cached.at<READ_CACHE_TTL)return Promise.resolve(cached.data);
   if(readInflight.has(key))return readInflight.get(key);
-  const req=jsonpRequest(type,params,'read').then(data=>{readCache.set(key,{at:Date.now(),data});return data}).finally(()=>readInflight.delete(key));
+  const generation=readGeneration;
+  const req=jsonpRequest(type,params,'read').then(data=>{if(generation===readGeneration)readCache.set(key,{at:Date.now(),data});return data}).finally(()=>{if(readInflight.get(key)===req)readInflight.delete(key)});
   readInflight.set(key,req);return req;
 }
-function clearReadCaches(){readCache.clear();readInflight.clear()}
+function clearReadCaches(){readGeneration++;readCache.clear();readInflight.clear()}
 function apiPost(type,data){return jsonpRequest(type,{data:JSON.stringify(data)},'write').then(result=>{clearReadCaches();return result})}
 
 
