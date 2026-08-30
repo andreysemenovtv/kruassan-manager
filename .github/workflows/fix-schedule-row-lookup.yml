@@ -1,74 +1,8 @@
-name: Fix schedule row lookup
+name: Fix schedule row lookup (completed)
 on:
-  push:
-    branches:
-      - main
-permissions:
-  contents: write
+  workflow_dispatch:
 jobs:
-  patch:
-    if: github.actor != 'github-actions[bot]'
+  done:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Patch schedule API identity handling
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import textwrap
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          marker="const cashItems=["
-          helper=textwrap.dedent("""
-          const scheduleBackendIdentity={
-            'ПК Маркса':{object:'ПК Маркса ',manager:'Мизецкий Владислав'},
-            'Шеф · Етрюхин Илья':{object:'Етрюхин Илья',manager:'Етрюхин Илья'},
-            'Шеф · Мерцык Светлана':{object:'Мерцык Светлана ',manager:'Мерцык Светлана '},
-            'Шеф · Татьяна Терлеева':{object:'Татьяна Терлеева',manager:'Татьяна Терлеева'},
-            'Шеф-бариста · Щелупанова Таисия':{object:'Щелупанова Таисия',manager:'Щелупанова Таисия'}
-          };
-          function scheduleApiIdentity(object,manager=''){
-            const m=scheduleBackendIdentity[object];
-            return m?{object:m.object,manager:m.manager}:{object,manager};
-          }
-          function scheduleRowMissing(err){return /Строка менеджера\/объекта не найдена/i.test(String(err?.message||err||''))}
-          async function scheduleRead(object,manager,params={}){
-            const api=scheduleApiIdentity(object,manager||'');
-            try{return await jsonp('schedule',{object:api.object,manager:api.manager,...params})}
-            catch(e){
-              if(!scheduleRowMissing(e))throw e;
-              const fallback=String(manager||object||'').replace(/^Шеф(?:-бариста)?\s*·\s*/,'').trim();
-              if(!fallback||fallback===String(api.object).trim())throw e;
-              return await jsonp('schedule',{object:fallback,manager:fallback,...params});
-            }
-          }
-          async function scheduleWrite(data){
-            const api=scheduleApiIdentity(data.object,data.manager||'');
-            try{return await apiPost('schedule',{...data,object:api.object,manager:api.manager})}
-            catch(e){
-              if(!scheduleRowMissing(e))throw e;
-              const fallback=String(data.manager||data.object||'').replace(/^Шеф(?:-бариста)?\s*·\s*/,'').trim();
-              if(!fallback||fallback===String(api.object).trim())throw e;
-              return await apiPost('schedule',{...data,object:fallback,manager:fallback});
-            }
-          }
-
-          const cashItems=[
-          """)
-          if 'const scheduleBackendIdentity={' not in s:
-            assert marker in s, 'cashItems marker not found'
-            s=s.replace(marker,helper,1)
-          s=s.replace("const d=await jsonp('schedule',{object:obj,manager:scheduleManager.value||'',start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))});","const d=await scheduleRead(obj,scheduleManager.value||'',{start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))});",1)
-          s=s.replace("const r=await apiPost('schedule',data);","const r=await scheduleWrite(data);",1)
-          s=s.replace("jsonp('schedule',{object:u.schedule,manager:u.manager||'',...q})","scheduleRead(u.schedule,u.manager||'',q)")
-          s=s.replace("scheduleStat(await jsonp('schedule',{object:u.schedule,manager:u.manager,...q}),p)","scheduleStat(await scheduleRead(u.schedule,u.manager,q),p)")
-          p.write_text(s,encoding='utf-8')
-          PY
-      - name: Commit app fix
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git diff --cached --quiet && exit 0
-          git commit -m "Fix schedule row lookup for chefs and aliases"
-          git push
+      - run: echo "Schedule row lookup fix already applied"
