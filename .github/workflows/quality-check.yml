@@ -1,0 +1,40 @@
+name: Portal quality check
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static HTML checks
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script>(.*?)</script>',s,re.S)
+          if len(scripts)!=1:
+              raise SystemExit(f'Expected one inline script, got {len(scripts)}')
+          Path('/tmp/app.js').write_text(scripts[0],encoding='utf-8')
+          if s.count('function jsonpRequest(')!=1:
+              raise SystemExit('jsonpRequest must be defined exactly once')
+          ids=[x for x in re.findall(r'\bid="([^"]+)"',s) if '${' not in x]
+          dup=sorted({x for x in ids if ids.count(x)>1})
+          if dup:
+              raise SystemExit('Duplicate static IDs: '+', '.join(dup))
+          views=set(re.findall(r'<section id="([^"]+)View"',s))
+          opens=set(re.findall(r'data-open="([^"]+)"',s))
+          missing=opens-views
+          if missing:
+              raise SystemExit('Navigation target missing: '+', '.join(sorted(missing)))
+          if 'start:serverScheduleDate(ymd(p.s))' in s or 'end:serverScheduleDate(ymd(p.e))' in s:
+              raise SystemExit('Schedule period bounds must not be shifted')
+          print('Portal static checks passed')
+          PY
+      - name: JavaScript syntax
+        run: node --check /tmp/app.js
