@@ -1,0 +1,51 @@
+name: Add chef schedule options
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-site:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add chefs to schedule selector
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old_objects = "const scheduleObjects=['КК Победа','КК Зеленоградск','КК Красная','КК Светлогорск','КК Невский','КК Мира','КК Ленинский','КК Багратиона','ПК Зеленоградск','ПК Маркса'];"
+          new_objects = "const scheduleObjects=['КК Победа','КК Зеленоградск','КК Красная','КК Светлогорск','КК Невский','КК Мира','КК Ленинский','КК Багратиона','ПК Зеленоградск','ПК Маркса','Шеф · Етрюхин Илья','Шеф · Мерцык Светлана','Шеф · Терлеева','Шеф-бариста · Щелупанова Таисия'];"
+
+          if old_objects not in s:
+              raise SystemExit('scheduleObjects target not found')
+          s = s.replace(old_objects, new_objects, 1)
+
+          old_end = "  'ПК Маркса':'Мизецкий Владислав'\n};"
+          new_end = "  'ПК Маркса':'Мизецкий Владислав',\n  'Шеф · Етрюхин Илья':'Етрюхин Илья',\n  'Шеф · Мерцык Светлана':'Мерцык Светлана',\n  'Шеф · Терлеева':'Терлеева',\n  'Шеф-бариста · Щелупанова Таисия':'Щелупанова Таисия'\n};"
+
+          if old_end not in s:
+              raise SystemExit('scheduleManagers target not found')
+          s = s.replace(old_end, new_end, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Add chefs to manager schedule" || exit 0
+          git push
