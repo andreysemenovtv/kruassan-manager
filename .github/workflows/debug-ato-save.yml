@@ -10,8 +10,7 @@ jobs:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Test ATO read and write with current values
+      - name: Pinpoint write stage and restore original value
         run: |
           python - <<'PY'
           import json, urllib.parse, urllib.request
@@ -20,8 +19,15 @@ jobs:
               url=base+'?'+urllib.parse.urlencode(params)
               with urllib.request.urlopen(url,timeout=40) as r:
                   return r.read().decode('utf-8','replace')
-          print('READ:',call({'action':'read','type':'ato','pin':'123','callback':'cb','object':'Багратиона'}))
-          data={'object':'Багратиона','manager':'Власюк О.Г.','ato':'84.58','production':'90.91','bar':'93.11','bakery':'93.55'}
-          print('WRITE:',call({'action':'write','type':'ato','pin':'123','callback':'cb','data':json.dumps(data,ensure_ascii=False,separators=(',',':'))}))
-          print('READ2:',call({'action':'read','type':'ato','pin':'123','callback':'cb','object':'Багратиона'}))
+          def read(): return call({'action':'read','type':'ato','pin':'123','callback':'cb','object':'Багратиона'})
+          def write(ato):
+              data={'object':'Багратиона','manager':'Власюк О.Г.','ato':ato,'production':'90.91','bar':'93.11','bakery':'93.55'}
+              return call({'action':'write','type':'ato','pin':'123','callback':'cb','data':json.dumps(data,ensure_ascii=False,separators=(',',':'))})
+          print('BEFORE:',read())
+          try:
+              print('WRITE TEST:',write('84.59'))
+              print('AFTER TEST:',read())
+          finally:
+              print('RESTORE:',write('84.58'))
+              print('AFTER RESTORE:',read())
           PY
