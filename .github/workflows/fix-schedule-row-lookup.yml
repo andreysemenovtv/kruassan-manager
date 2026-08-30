@@ -7,6 +7,7 @@ permissions:
   contents: write
 jobs:
   patch:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -57,31 +58,17 @@ jobs:
           if 'const scheduleBackendIdentity={' not in s:
             assert marker in s, 'cashItems marker not found'
             s=s.replace(marker,helper,1)
-          old="const d=await jsonp('schedule',{object:obj,manager:scheduleManager.value||'',start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))});"
-          new="const d=await scheduleRead(obj,scheduleManager.value||'',{start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))});"
-          s=s.replace(old,new,1)
+          s=s.replace("const d=await jsonp('schedule',{object:obj,manager:scheduleManager.value||'',start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))});","const d=await scheduleRead(obj,scheduleManager.value||'',{start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))});",1)
           s=s.replace("const r=await apiPost('schedule',data);","const r=await scheduleWrite(data);",1)
           s=s.replace("jsonp('schedule',{object:u.schedule,manager:u.manager||'',...q})","scheduleRead(u.schedule,u.manager||'',q)")
           s=s.replace("scheduleStat(await jsonp('schedule',{object:u.schedule,manager:u.manager,...q}),p)","scheduleStat(await scheduleRead(u.schedule,u.manager,q),p)")
           p.write_text(s,encoding='utf-8')
           PY
-      - name: Disable one-shot workflow
-        run: |
-          cat > .github/workflows/fix-schedule-row-lookup.yml <<'YML'
-          name: Fix schedule row lookup (completed)
-          on:
-            workflow_dispatch:
-          jobs:
-            done:
-              runs-on: ubuntu-latest
-              steps:
-                - run: echo "Schedule row lookup fix already applied"
-          YML
-      - name: Commit fix
+      - name: Commit app fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html .github/workflows/fix-schedule-row-lookup.yml
+          git add index.html
           git diff --cached --quiet && exit 0
           git commit -m "Fix schedule row lookup for chefs and aliases"
           git push
