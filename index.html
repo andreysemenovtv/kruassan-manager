@@ -376,6 +376,14 @@ atoForm.addEventListener('submit',async e=>{
 // Schedule
 function pad(n){return String(n).padStart(2,'0')}
 function ymd(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+function shiftScheduleDate(s,days){
+  const [y,m,d]=String(s).split('-').map(Number);
+  const dt=new Date(Date.UTC(y,m-1,d));
+  dt.setUTCDate(dt.getUTCDate()+days);
+  return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth()+1)}-${pad(dt.getUTCDate())}`;
+}
+function serverScheduleDate(s){return shiftScheduleDate(s,-1)}
+function clientScheduleDate(s){return shiftScheduleDate(s,1)}
 function periodLabel(start,end){const f=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'long'});return `${f.format(start)} — ${f.format(end)}`}
 function halfPeriods(){
   const now=new Date(),y=now.getFullYear(),m=now.getMonth(),p=[];
@@ -407,9 +415,9 @@ async function loadSchedule(){
   const p=periods[+periodSelect.value||0];
   try{
     scheduleForm.classList.add('field-loading');
-    const d=await jsonp('schedule',{object:obj,manager:scheduleManager.value||'',start:ymd(p.s),end:ymd(p.e)});
+    const d=await jsonp('schedule',{object:obj,manager:scheduleManager.value||'',start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))});
     document.querySelectorAll('#scheduleList input[data-date]').forEach(i=>i.value='');
-    (d.entries||[]).forEach(x=>{const i=document.querySelector(`#scheduleList input[data-date="${x.date}"]`);if(i)i.value=x.value||''});
+    (d.entries||[]).forEach(x=>{const shownDate=clientScheduleDate(x.date);const i=document.querySelector(`#scheduleList input[data-date="${shownDate}"]`);if(i)i.value=x.value||''});
     notify('График загружен из Google Sheets');
   }catch(e){notify('Ошибка: '+e.message)}finally{scheduleForm.classList.remove('field-loading')}
 }
@@ -424,7 +432,7 @@ document.getElementById('scheduleList').addEventListener('focusin',e=>{if(e.targ
 document.querySelectorAll('[data-shift]').forEach(b=>b.onclick=()=>{if(activeScheduleInput){activeScheduleInput.value=b.dataset.shift;activeScheduleInput.focus()}else notify('Сначала выберите день')});
 scheduleForm.addEventListener('submit',async e=>{
   e.preventDefault();
-  const entries=[...document.querySelectorAll('#scheduleList input[data-date]')].map(i=>({date:i.dataset.date,value:i.value.trim()}));
+  const entries=[...document.querySelectorAll('#scheduleList input[data-date]')].map(i=>({date:serverScheduleDate(i.dataset.date),value:i.value.trim()}));
   const data={object:scheduleObject.value,manager:scheduleManager.value.trim(),entries};
   try{
     setBusy(scheduleForm,true,'Записываю график…');
