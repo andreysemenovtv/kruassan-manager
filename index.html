@@ -265,13 +265,12 @@ function save(r){const a=records();a.push({...r,savedAt:new Date().toISOString()
 function notify(t='Сохранено'){toast.textContent=t;toast.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>toast.classList.remove('show'),2300)}
 
 function getPin(force=false){
-  let pin=force?'':(localStorage.getItem(PIN_KEY)||'');
-  if(!pin){
-    pin=prompt('Введите код доступа к рабочему порталу');
-    if(!pin) throw new Error('Код доступа не введён');
-    pin=pin.trim();
-    localStorage.setItem(PIN_KEY,pin);
-  }
+  const pin = "123";
+
+  try {
+    localStorage.setItem(PIN_KEY, pin);
+  } catch(e) {}
+
   return pin;
 }
 function authError(err){
