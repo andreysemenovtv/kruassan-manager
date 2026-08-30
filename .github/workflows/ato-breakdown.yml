@@ -1,0 +1,75 @@
+name: ATO object and department breakdown
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update ATO presentation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          s = s.replace('Общий результат АТО<div class="percent-wrap">', 'Общий АТО по объекту<div class="percent-wrap">')
+          s = s.replace('Показатели для премирования до сотых', 'Общий АТО по объекту и по подразделениям')
+          s = s.replace('<span>АТО · наличка · график</span>', '<span>Общий АТО · подразделения · наличка · график</span>')
+
+          old_avg = "const atoAvg=atoVals.length?atoVals.reduce((a,b)=>a+b,0)/atoVals.length:null;"
+          new_avg = """const avgMetric=(arr)=>arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null;
+    const atoAvg=avgMetric(atoVals);
+    const productionVals=units.filter(x=>x.ato&&x.ato.status==='Готово'&&x.ato.production!=null).map(x=>Number(x.ato.production));
+    const barVals=units.filter(x=>x.ato&&x.ato.status==='Готово'&&x.ato.bar!=null).map(x=>Number(x.ato.bar));
+    const bakeryVals=units.filter(x=>x.ato&&x.ato.status==='Готово'&&x.ato.bakery!=null).map(x=>Number(x.ato.bakery));
+    const productionAvg=avgMetric(productionVals),barAvg=avgMetric(barVals),bakeryAvg=avgMetric(bakeryVals);"""
+          if old_avg in s:
+              s = s.replace(old_avg, new_avg, 1)
+
+          old_note = "Среднее заполненных: ${atoAvg==null?'—':atoAvg.toFixed(1).replace('.',',')+'%'}"
+          new_note = "Объект: ${atoAvg==null?'—':atoAvg.toFixed(1).replace('.',',')+'%'}<br>Технологи: ${productionAvg==null?'—':productionAvg.toFixed(1).replace('.',',')+'%'} · Бар: ${barAvg==null?'—':barAvg.toFixed(1).replace('.',',')+'%'} · Пекарня: ${bakeryAvg==null?'—':bakeryAvg.toFixed(1).replace('.',',')+'%'}"
+          s = s.replace(old_note, new_note, 1)
+
+          pattern = re.compile(r"function leaderUnitHtml\(r\)\{.*?\n\}\nfunction leaderChefHtml", re.S)
+          replacement = r'''function leaderPct(v){
+  if(v===null||v===undefined||v==='') return '—';
+  const n=Number(v);
+  return Number.isFinite(n)?n.toFixed(2).replace('.',',')+'%':'—';
+}
+function leaderUnitHtml(r){
+  const a=r.ato,c=r.cash,g=r.schedule;
+  const atoOk=a&&a.status==='Готово',cashOk=c&&c.status==='Заполнено',schedOk=g&&g.ok;
+  const overall=atoOk&&cashOk&&schedOk;
+  const manager=(a&&a.manager)||(c&&c.manager)||r.u.manager||'Менеджер не указан';
+  return `<div class="unit-card"><div class="unit-top"><div><div class="unit-name">${r.u.title}</div><div class="unit-manager">${manager}</div></div><span class="unit-state ${overall?'ok':'warn'}">${overall?'Всё заполнено':'Есть пробелы'}</span></div><div class="unit-statuses"><div class="status-cell" style="grid-column:1/-1"><small>Общий АТО по объекту</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.ato):'Не заполнено'}</b></div><div class="status-cell"><small>Технологи производства</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.production):'—'}</b></div><div class="status-cell"><small>Бар</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.bar):'—'}</b></div><div class="status-cell"><small>Пекарня</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.bakery):'—'}</b></div><div class="status-cell"><small>Подотчёт</small><b class="${cashOk?'good':'bad'}">${cashOk?money(c.amount):'Не заполнено'}</b></div><div class="status-cell"><small>График</small><b class="${schedOk?'good':'bad'}">${g?g.filled+' из '+g.total:'Нет ответа'}</b></div></div></div>`;
+}
+function leaderChefHtml'''
+          s2, n = pattern.subn(replacement, s, count=1)
+          if n:
+              s = s2
+
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Show ATO overall and department breakdown"
+          git push
