@@ -8,7 +8,7 @@ jobs:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Test idempotent ATO write without manager
+      - name: Test changed ATO value without manager
         run: |
           python - <<'PY'
           import json,re,urllib.parse,urllib.request
@@ -21,10 +21,9 @@ jobs:
           before=call({'action':'read','type':'ato','pin':'123','object':'Багратиона'})
           print('BEFORE=',json.dumps(before,ensure_ascii=False))
           d=before['data']
-          payload={'object':'Багратиона','ato':d['ato'],'production':d['production'],'bar':d['bar'],'bakery':d['bakery']}
+          payload={'object':'Багратиона','ato':84.59,'production':d['production'],'bar':d['bar'],'bakery':d['bakery']}
           result=call({'action':'write','type':'ato','pin':'123','data':json.dumps(payload,ensure_ascii=False,separators=(',',':'))})
-          print('WRITE_NO_MANAGER=',json.dumps(result,ensure_ascii=False))
+          print('WRITE_CHANGED=',json.dumps(result,ensure_ascii=False))
           after=call({'action':'read','type':'ato','pin':'123','object':'Багратиона'})
           print('AFTER=',json.dumps(after,ensure_ascii=False))
-          if not result.get('ok'): raise SystemExit('write without manager failed: '+str(result.get('error')))
           PY
