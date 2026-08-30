@@ -531,7 +531,7 @@ async function loadSchedule(){
   const p=periods[+periodSelect.value||0];
   try{
     scheduleForm.classList.add('field-loading');
-    const d=await scheduleRead(obj,scheduleManager.value||'',{start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))});
+    const d=await scheduleRead(obj,scheduleManager.value||'',{start:ymd(p.s),end:ymd(p.e)});
     document.querySelectorAll('#scheduleList input[data-date]').forEach(i=>i.value='');
     (d.entries||[]).forEach(x=>{const shownDate=clientScheduleDate(x.date);const i=document.querySelector(`#scheduleList input[data-date="${shownDate}"]`);if(i)i.value=x.value||''});
     notify('График загружен из Google Sheets');
@@ -570,7 +570,7 @@ function scheduleStat(d,p){
   return {filled,total,ok:filled>=total};
 }
 async function getLeaderUnit(u,p){
-  const q={start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))};
+  const q={start:ymd(p.s),end:ymd(p.e)};
   const [a,c,g]=await Promise.allSettled([
     jsonp('ato',{object:u.ato}),
     jsonp('cash',{object:u.cash}),
@@ -579,7 +579,7 @@ async function getLeaderUnit(u,p){
   return {u,ato:a.status==='fulfilled'?a.value:null,cash:c.status==='fulfilled'?c.value:null,schedule:g.status==='fulfilled'?scheduleStat(g.value,p):null};
 }
 async function getLeaderChef(u,p){
-  const q={start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))};
+  const q={start:ymd(p.s),end:ymd(p.e)};
   try{return {u,schedule:scheduleStat(await scheduleRead(u.schedule,u.manager,q),p)}}catch(e){return {u,schedule:null}}
 }
 function leaderPct(v){
