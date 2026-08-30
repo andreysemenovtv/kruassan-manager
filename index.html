@@ -278,19 +278,19 @@ function authError(err){
   if(String(err||'').toLowerCase().includes('неверный код')) localStorage.removeItem(PIN_KEY);
 }
 
-function jsonp(type,params={}){
+function jsonpRequest(type,params={},action='read'){
   return new Promise((resolve,reject)=>{
     let pin;
     try{pin=getPin()}catch(e){reject(e);return}
     const cb='kruassan_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
     const u=new URL(API_URL);
-    u.searchParams.set('action','read');
+    u.searchParams.set('action',action);
     u.searchParams.set('type',type);
     u.searchParams.set('pin',pin);
     u.searchParams.set('callback',cb);
     Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v??''));
     const sc=document.createElement('script');
-    const timer=setTimeout(()=>{cleanup();reject(new Error('Нет ответа от Google Sheets'))},15000);
+    const timer=setTimeout(()=>{cleanup();reject(new Error('Нет ответа от Google Sheets'))},20000);
     function cleanup(){clearTimeout(timer);delete window[cb];sc.remove()}
     window[cb]=(res)=>{
       cleanup();
@@ -303,46 +303,12 @@ function jsonp(type,params={}){
   });
 }
 
-const pendingPosts=new Map();
-window.addEventListener('message',e=>{
-  const d=e.data;
-  if(!d||typeof d!=='object'||!d.requestId||!pendingPosts.has(d.requestId)) return;
-  const p=pendingPosts.get(d.requestId);
-  pendingPosts.delete(d.requestId);
-  p.cleanup();
-  if(d.ok) p.resolve(d.data);
-  else{authError(d.error);p.reject(new Error(d.error||'Ошибка сохранения'))}
-});
+function jsonp(type,params={}){
+  return jsonpRequest(type,params,'read');
+}
 
 function apiPost(type,data){
-  return new Promise((resolve,reject)=>{
-    let pin;
-    try{pin=getPin()}catch(e){reject(e);return}
-    const requestId='req_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-    const frame=document.createElement('iframe');
-    frame.name='sync_'+requestId;
-    frame.style.display='none';
-    const form=document.createElement('form');
-    form.method='POST';
-    form.action=API_URL;
-    form.target=frame.name;
-    form.style.display='none';
-    const inp=document.createElement('input');
-    inp.type='hidden';inp.name='payload';
-    inp.value=JSON.stringify({pin,type,data,requestId});
-    form.appendChild(inp);
-    document.body.append(frame,form);
-    const timer=setTimeout(()=>{
-      if(pendingPosts.has(requestId)){
-        pendingPosts.delete(requestId);
-        frame.remove();form.remove();
-        reject(new Error('Google Sheets не ответили. Повторите попытку.'));
-      }
-    },20000);
-    const cleanup=()=>{clearTimeout(timer);setTimeout(()=>{frame.remove();form.remove()},200)};
-    pendingPosts.set(requestId,{resolve,reject,cleanup});
-    form.submit();
-  });
+  return jsonpRequest(type,{data:JSON.stringify(data)},'write');
 }
 
 function setBusy(form,on,text){
