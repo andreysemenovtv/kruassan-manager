@@ -2,6 +2,12 @@ from pathlib import Path
 import re
 
 src = Path('tools/audit_optimize.py').read_text(encoding='utf-8')
+# The source contains dynamic template IDs such as id="tpl_${f.id}". They are not real duplicate DOM IDs.
+old_id_check = '''ids = re.findall(r'\\bid="([^"]+)"', s)\ndup = sorted({x for x in ids if ids.count(x) > 1})\nif dup:\n    raise SystemExit('duplicate ids: ' + ', '.join(dup))'''
+new_id_check = '''ids = [x for x in re.findall(r'\\bid="([^"]+)"', s) if '${' not in x]\ndup = sorted({x for x in ids if ids.count(x) > 1})\nif dup:\n    raise SystemExit('duplicate static ids: ' + ', '.join(dup))'''
+if old_id_check not in src:
+    raise SystemExit('static ID audit block not found')
+src = src.replace(old_id_check, new_id_check, 1)
 # The CSV anchor differs only in quoting across Python/JS; apply it separately below.
 filtered = '\n'.join(line for line in src.splitlines() if "'safe csv')" not in line)
 ns = {'__name__': '__main__'}
