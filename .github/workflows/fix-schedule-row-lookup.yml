@@ -1,37 +1,8 @@
-name: Move timesheet tile down
+name: Timesheet layout update (completed)
 on:
-  push:
-    branches:
-      - main
-permissions:
-  contents: write
+  workflow_dispatch:
 jobs:
-  patch:
-    if: github.actor != 'github-actions[bot]'
+  done:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Move and relabel timesheet tile
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          old='''    <button class="tile soft-pink" data-open="timesheet">\n      <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/></svg></span>\n      <span class="tile-title">Табель</span><span class="tile-desc">Смена, время и количество часов</span><span class="tile-arrow">›</span>\n    </button>\n'''
-          new='''    <button class="tile soft-pink" data-open="timesheet" style="opacity:.68">\n      <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/></svg></span>\n      <span class="tile-badge">Не использовать</span><span class="tile-title">Табель</span><span class="tile-desc">Раздел временно не используется</span><span class="tile-arrow">›</span>\n    </button>\n'''
-          forms='''    <button class="tile" data-open="forms">\n      <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 3.5h7l4 4v13H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/><path d="M14 3.5v5h4M8.5 12h6.5M8.5 15h6.5"/></svg></span>\n      <span class="tile-title">Бланки</span><span class="tile-desc">Заявления и рабочие документы</span><span class="tile-arrow">›</span>\n    </button>\n'''
-          if old in s:
-              s=s.replace(old,'',1)
-          if new not in s:
-              assert forms in s, 'forms tile not found'
-              s=s.replace(forms,forms+new,1)
-          p.write_text(s,encoding='utf-8')
-          PY
-      - name: Commit app update
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git diff --cached --quiet && exit 0
-          git commit -m "Move timesheet tile down and mark unused"
-          git push
+      - run: echo "Timesheet tile already moved and marked unused"
