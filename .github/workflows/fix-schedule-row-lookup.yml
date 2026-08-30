@@ -1,8 +1,38 @@
-name: Fix schedule row lookup (completed)
+name: Harden schedule backend aliases
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
 jobs:
-  done:
+  patch:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Schedule row lookup fix already applied"
+      - uses: actions/checkout@v4
+      - name: Match schedule objects to Google Sheet rows
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          pairs={
+            "'Шеф · Етрюхин Илья':{object:'Етрюхин Илья',manager:'Етрюхин Илья'}":"'Шеф · Етрюхин Илья':{object:'Светлогорск',manager:'Етрюхин Илья'}",
+            "'Шеф · Мерцык Светлана':{object:'Мерцык Светлана ',manager:'Мерцык Светлана '}":"'Шеф · Мерцык Светлана':{object:'Победа Красная Ленинский Мира Невского',manager:'Мерцык Светлана'}",
+            "'Шеф · Татьяна Терлеева':{object:'Татьяна Терлеева',manager:'Татьяна Терлеева'}":"'Шеф · Татьяна Терлеева':{object:'ПК Зеленоградск, Маркса, Багратиона, Зеленоградск',manager:'Татьяна Терлеева'}",
+            "'Шеф-бариста · Щелупанова Таисия':{object:'Щелупанова Таисия',manager:'Щелупанова Таисия'}":"'Шеф-бариста · Щелупанова Таисия':{object:'Шеф-бариста',manager:'Щелупанова Таисия'}"
+          }
+          for old,new in pairs.items():
+            if old in s:
+              s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit app fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Match chef schedules to sheet rows"
+          git push
