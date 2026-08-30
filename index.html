@@ -260,7 +260,42 @@ const scheduleManagers={
   'Шеф · Татьяна Терлеева':'Татьяна Терлеева',
   'Шеф-бариста · Щелупанова Таисия':'Щелупанова Таисия'
 };
+
+const scheduleBackendIdentity={
+  'ПК Маркса':{object:'ПК Маркса ',manager:'Мизецкий Владислав'},
+  'Шеф · Етрюхин Илья':{object:'Етрюхин Илья',manager:'Етрюхин Илья'},
+  'Шеф · Мерцык Светлана':{object:'Мерцык Светлана ',manager:'Мерцык Светлана '},
+  'Шеф · Татьяна Терлеева':{object:'Татьяна Терлеева',manager:'Татьяна Терлеева'},
+  'Шеф-бариста · Щелупанова Таисия':{object:'Щелупанова Таисия',manager:'Щелупанова Таисия'}
+};
+function scheduleApiIdentity(object,manager=''){
+  const m=scheduleBackendIdentity[object];
+  return m?{object:m.object,manager:m.manager}:{object,manager};
+}
+function scheduleRowMissing(err){return /Строка менеджера\/объекта не найдена/i.test(String(err?.message||err||''))}
+async function scheduleRead(object,manager,params={}){
+  const api=scheduleApiIdentity(object,manager||'');
+  try{return await jsonp('schedule',{object:api.object,manager:api.manager,...params})}
+  catch(e){
+    if(!scheduleRowMissing(e))throw e;
+    const fallback=String(manager||object||'').replace(/^Шеф(?:-бариста)?\s*·\s*/,'').trim();
+    if(!fallback||fallback===String(api.object).trim())throw e;
+    return await jsonp('schedule',{object:fallback,manager:fallback,...params});
+  }
+}
+async function scheduleWrite(data){
+  const api=scheduleApiIdentity(data.object,data.manager||'');
+  try{return await apiPost('schedule',{...data,object:api.object,manager:api.manager})}
+  catch(e){
+    if(!scheduleRowMissing(e))throw e;
+    const fallback=String(data.manager||data.object||'').replace(/^Шеф(?:-бариста)?\s*·\s*/,'').trim();
+    if(!fallback||fallback===String(api.object).trim())throw e;
+    return await apiPost('schedule',{...data,object:fallback,manager:fallback});
+  }
+}
+
 const cashItems=[
+
   {label:'Круассан Кафе · Багратиона',value:'Багратиона'},
   {label:'Круассан Кафе · Зеленоградск',value:'Зеленоградск'},
   {label:'Круассан Кафе · Красная',value:'Красная'},
@@ -473,7 +508,7 @@ async function loadSchedule(){
   const p=periods[+periodSelect.value||0];
   try{
     scheduleForm.classList.add('field-loading');
-    const d=await jsonp('schedule',{object:obj,manager:scheduleManager.value||'',start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))});
+    const d=await scheduleRead(obj,scheduleManager.value||'',{start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))});
     document.querySelectorAll('#scheduleList input[data-date]').forEach(i=>i.value='');
     (d.entries||[]).forEach(x=>{const shownDate=clientScheduleDate(x.date);const i=document.querySelector(`#scheduleList input[data-date="${shownDate}"]`);if(i)i.value=x.value||''});
     notify('График загружен из Google Sheets');
@@ -494,7 +529,7 @@ scheduleForm.addEventListener('submit',async e=>{
   const data={object:scheduleObject.value,manager:scheduleManager.value.trim(),entries};
   try{
     setBusy(scheduleForm,true,'Записываю график…');
-    const r=await apiPost('schedule',data);
+    const r=await scheduleWrite(data);
     save({type:'График',...data});
     notify(`График записан · дней: ${r.saved??entries.length}`);
   }catch(err){notify('Не сохранено: '+err.message)}finally{setBusy(scheduleForm,false)}
@@ -516,13 +551,13 @@ async function getLeaderUnit(u,p){
   const [a,c,g]=await Promise.allSettled([
     jsonp('ato',{object:u.ato}),
     jsonp('cash',{object:u.cash}),
-    jsonp('schedule',{object:u.schedule,manager:u.manager||'',...q})
+    scheduleRead(u.schedule,u.manager||'',q)
   ]);
   return {u,ato:a.status==='fulfilled'?a.value:null,cash:c.status==='fulfilled'?c.value:null,schedule:g.status==='fulfilled'?scheduleStat(g.value,p):null};
 }
 async function getLeaderChef(u,p){
   const q={start:serverScheduleDate(ymd(p.s)),end:serverScheduleDate(ymd(p.e))};
-  try{return {u,schedule:scheduleStat(await jsonp('schedule',{object:u.schedule,manager:u.manager,...q}),p)}}catch(e){return {u,schedule:null}}
+  try{return {u,schedule:scheduleStat(await scheduleRead(u.schedule,u.manager,q),p)}}catch(e){return {u,schedule:null}}
 }
 function leaderPct(v){
   if(v===null||v===undefined||v==='') return '—';
