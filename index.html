@@ -146,9 +146,9 @@ dialog{width:min(720px,calc(100% - 18px));max-height:92vh;border:0;border-radius
 </section>
 
 <section id="scheduleView" class="view">
-  <div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">График</div><h2>График менеджера</h2><p>Выберите объект и период. Для каждого дня можно указать смену, «Вых», «Отпуск» или свободный текст.</p></div>
+  <div class="page-head"><div class="back-row"><button class="back-link" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>Назад</button></div><div class="page-eyebrow">График</div><h2>График менеджеров и шефов</h2><p>Выберите объект и период. Для каждого дня можно указать смену, «Вых», «Отпуск» или свободный текст.</p></div>
   <form id="scheduleForm" class="card form-card">
-    <div class="schedule-toolbar"><label>Объект<select name="object" class="schedule-object" required></select></label><label>Менеджер<input name="manager" placeholder="ФИО" required></label></div>
+    <div class="schedule-toolbar"><label>Объект / сотрудник<select name="object" class="schedule-object" required></select></label><label>Менеджер<input name="manager" placeholder="ФИО" required></label></div>
     <label>Период<select id="schedulePeriod"></select></label>
     <div class="quick-shifts"><button type="button" class="chip" data-shift="8-17">8–17</button><button type="button" class="chip" data-shift="9-18">9–18</button><button type="button" class="chip" data-shift="12-22">12–22</button><button type="button" class="chip" data-shift="Вых">Вых</button><button type="button" class="chip" data-shift="Отпуск">Отпуск</button></div>
     <div class="schedule-list" id="scheduleList"></div>
@@ -428,7 +428,7 @@ async function loadSchedule(){
 periodSelect.onchange=()=>{renderSchedule();loadSchedule()};
 renderSchedule();
 scheduleObject.addEventListener('change',()=>{
-  if(!scheduleManager.value&&scheduleManagers[scheduleObject.value]) scheduleManager.value=scheduleManagers[scheduleObject.value];
+  scheduleManager.value=scheduleManagers[scheduleObject.value]||'';
   loadSchedule();
 });
 let activeScheduleInput=null;
