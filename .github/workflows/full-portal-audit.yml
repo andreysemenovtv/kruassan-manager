@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Apply audit fixes
-        run: python tools/audit_optimize.py
+        run: python tools/run_audit.py
       - name: Check JavaScript syntax
         run: node --check /tmp/app.js
       - name: Commit optimized portal
