@@ -1,73 +1,23 @@
-name: ATO object and department breakdown
-
+name: ATO breakdown
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   patch:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Update ATO presentation
+      - name: Patch portal
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          p = Path('index.html')
-          s = p.read_text(encoding='utf-8')
-
-          s = s.replace('Общий результат АТО<div class="percent-wrap">', 'Общий АТО по объекту<div class="percent-wrap">')
-          s = s.replace('Показатели для премирования до сотых', 'Общий АТО по объекту и по подразделениям')
-          s = s.replace('<span>АТО · наличка · график</span>', '<span>Общий АТО · подразделения · наличка · график</span>')
-
-          old_avg = "const atoAvg=atoVals.length?atoVals.reduce((a,b)=>a+b,0)/atoVals.length:null;"
-          new_avg = """const avgMetric=(arr)=>arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null;
-    const atoAvg=avgMetric(atoVals);
-    const productionVals=units.filter(x=>x.ato&&x.ato.status==='Готово'&&x.ato.production!=null).map(x=>Number(x.ato.production));
-    const barVals=units.filter(x=>x.ato&&x.ato.status==='Готово'&&x.ato.bar!=null).map(x=>Number(x.ato.bar));
-    const bakeryVals=units.filter(x=>x.ato&&x.ato.status==='Готово'&&x.ato.bakery!=null).map(x=>Number(x.ato.bakery));
-    const productionAvg=avgMetric(productionVals),barAvg=avgMetric(barVals),bakeryAvg=avgMetric(bakeryVals);"""
-          if old_avg in s:
-              s = s.replace(old_avg, new_avg, 1)
-
-          old_note = "Среднее заполненных: ${atoAvg==null?'—':atoAvg.toFixed(1).replace('.',',')+'%'}"
-          new_note = "Объект: ${atoAvg==null?'—':atoAvg.toFixed(1).replace('.',',')+'%'}<br>Технологи: ${productionAvg==null?'—':productionAvg.toFixed(1).replace('.',',')+'%'} · Бар: ${barAvg==null?'—':barAvg.toFixed(1).replace('.',',')+'%'} · Пекарня: ${bakeryAvg==null?'—':bakeryAvg.toFixed(1).replace('.',',')+'%'}"
-          s = s.replace(old_note, new_note, 1)
-
-          pattern = re.compile(r"function leaderUnitHtml\(r\)\{.*?\n\}\nfunction leaderChefHtml", re.S)
-          replacement = r'''function leaderPct(v){
-  if(v===null||v===undefined||v==='') return '—';
-  const n=Number(v);
-  return Number.isFinite(n)?n.toFixed(2).replace('.',',')+'%':'—';
-}
-function leaderUnitHtml(r){
-  const a=r.ato,c=r.cash,g=r.schedule;
-  const atoOk=a&&a.status==='Готово',cashOk=c&&c.status==='Заполнено',schedOk=g&&g.ok;
-  const overall=atoOk&&cashOk&&schedOk;
-  const manager=(a&&a.manager)||(c&&c.manager)||r.u.manager||'Менеджер не указан';
-  return `<div class="unit-card"><div class="unit-top"><div><div class="unit-name">${r.u.title}</div><div class="unit-manager">${manager}</div></div><span class="unit-state ${overall?'ok':'warn'}">${overall?'Всё заполнено':'Есть пробелы'}</span></div><div class="unit-statuses"><div class="status-cell" style="grid-column:1/-1"><small>Общий АТО по объекту</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.ato):'Не заполнено'}</b></div><div class="status-cell"><small>Технологи производства</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.production):'—'}</b></div><div class="status-cell"><small>Бар</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.bar):'—'}</b></div><div class="status-cell"><small>Пекарня</small><b class="${atoOk?'good':'bad'}">${atoOk?leaderPct(a.bakery):'—'}</b></div><div class="status-cell"><small>Подотчёт</small><b class="${cashOk?'good':'bad'}">${cashOk?money(c.amount):'Не заполнено'}</b></div><div class="status-cell"><small>График</small><b class="${schedOk?'good':'bad'}">${g?g.filled+' из '+g.total:'Нет ответа'}</b></div></div></div>`;
-}
-function leaderChefHtml'''
-          s2, n = pattern.subn(replacement, s, count=1)
-          if n:
-              s = s2
-
-          p.write_text(s, encoding='utf-8')
-          PY
+          echo 'CmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAppbXBvcnQgcmUKCnAgPSBQYXRoKCJpbmRleC5odG1sIikKcyA9IHAucmVhZF90ZXh0KGVuY29kaW5nPSJ1dGYtOCIpCgpzID0gcy5yZXBsYWNlKCfQntCx0YnQuNC5INGA0LXQt9GD0LvRjNGC0LDRgiDQkNCi0J48ZGl2IGNsYXNzPSJwZXJjZW50LXdyYXAiPicsICfQntCx0YnQuNC5INCQ0KLQniDQv9C+INC+0LHRitC10LrRgtGDPGRpdiBjbGFzcz0icGVyY2VudC13cmFwIj4nKQpzID0gcy5yZXBsYWNlKCfQn9C+0LrQsNC30LDRgtC10LvQuCDQtNC70Y8g0L/RgNC10LzQuNGA0L7QstCw0L3QuNGPINC00L4g0YHQvtGC0YvRhScsICfQntCx0YnQuNC5INCQ0KLQniDQv9C+INC+0LHRitC10LrRgtGDINC4INC/0L4g0L/QvtC00YDQsNC30LTQtdC70LXQvdC40Y/QvCcpCnMgPSBzLnJlcGxhY2UoJzxzcGFuPtCQ0KLQniDCtyDQvdCw0LvQuNGH0LrQsCDCtyDQs9GA0LDRhNC40Lo8L3NwYW4+JywgJzxzcGFuPtCe0LHRidC40Lkg0JDQotCeIMK3INC/0L7QtNGA0LDQt9C00LXQu9C10L3QuNGPIMK3INC90LDQu9C40YfQutCwIMK3INCz0YDQsNGE0LjQujwvc3Bhbj4nKQoKb2xkX2F2ZyA9ICJjb25zdCBhdG9Bdmc9YXRvVmFscy5sZW5ndGg/YXRvVmFscy5yZWR1Y2UoKGEsYik9PmErYiwwKS9hdG9WYWxzLmxlbmd0aDpudWxsOyIKbmV3X2F2ZyA9ICcnJ2NvbnN0IGF2Z01ldHJpYz0oYXJyKT0+YXJyLmxlbmd0aD9hcnIucmVkdWNlKChhLGIpPT5hK2IsMCkvYXJyLmxlbmd0aDpudWxsOwogICAgY29uc3QgYXRvQXZnPWF2Z01ldHJpYyhhdG9WYWxzKTsKICAgIGNvbnN0IHByb2R1Y3Rpb25WYWxzPXVuaXRzLmZpbHRlcih4PT54LmF0byYmeC5hdG8uc3RhdHVzPT09J9CT0L7RgtC+0LLQvScmJnguYXRvLnByb2R1Y3Rpb24hPW51bGwpLm1hcCh4PT5OdW1iZXIoeC5hdG8ucHJvZHVjdGlvbikpOwogICAgY29uc3QgYmFyVmFscz11bml0cy5maWx0ZXIoeD0+eC5hdG8mJnguYXRvLnN0YXR1cz09PSfQk9C+0YLQvtCy0L4nJiZ4LmF0by5iYXIhPW51bGwpLm1hcCh4PT5OdW1iZXIoeC5hdG8uYmFyKSk7CiAgICBjb25zdCBiYWtlcnlWYWxzPXVuaXRzLmZpbHRlcih4PT54LmF0byYmeC5hdG8uc3RhdHVzPT09J9CT0L7RgtC+0LLQvicmJnguYXRvLmJha2VyeSE9bnVsbCkubWFwKHg9Pk51bWJlcih4LmF0by5iYWtlcnkpKTsKICAgIGNvbnN0IHByb2R1Y3Rpb25Bdmc9YXZnTWV0cmljKHByb2R1Y3Rpb25WYWxzKSxiYXJBdmc9YXZnTWV0cmljKGJhclZhbHMpLGJha2VyeUF2Zz1hdmdNZXRyaWMoYmFrZXJ5VmFscyk7JycnCmlmIG9sZF9hdmcgaW4gczoKICAgIHMgPSBzLnJlcGxhY2Uob2xkX2F2ZywgbmV3X2F2ZywgMSkKCm9sZF9ub3RlID0gItCh0YDQtdC00L3QtdC1INC30LDQv9C+0LvQvdC10L3QvdGL0YU6ICR7YXRvQXZnPT1udWxsPyfigJQnOmF0b0F2Zy50b0ZpeGVkKDEpLnJlcGxhY2UoJy4nLCcsJykrJyUnfSIKbmV3X25vdGUgPSAi0J7QsdGK0LXQutGCOiAke2F0b0F2Zz09bnVsbD8n4oCUJzphdG9BdmcudG9GaXhlZCgxKS5yZXBsYWNlKCcuJywnLCcpKyclJ308YnI+0KLQtdGF0L3QvtC70L7Qs9C4OiAke3Byb2R1Y3Rpb25Bdmc9PW51bGw/J+KAlCc6cHJvZHVjdGlvbkF2Zy50b0ZpeGVkKDEpLnJlcGxhY2UoJy4nLCcsJykrJyUnfSDCtyDQkdCw0YA6ICR7YmFyQXZnPT1udWxsPyfigJQnOmJhckF2Zy50b0ZpeGVkKDEpLnJlcGxhY2UoJy4nLCcsJykrJyUnfSDCtyDQn9C10LrQsNGA0L3RjzogJHtiYWtlcnlBdmc9PW51bGw/J+KAlCc6YmFrZXJ5QXZnLnRvRml4ZWQoMSkucmVwbGFjZSgnLicsJywnKSsnJSd9IgpzID0gcy5yZXBsYWNlKG9sZF9ub3RlLCBuZXdfbm90ZSwgMSkKCnBhdHRlcm4gPSByZS5jb21waWxlKHIiZnVuY3Rpb24gbGVhZGVyVW5pdEh0bWxcKHJcKVx7Lio/XG5cfVxuZnVuY3Rpb24gbGVhZGVyQ2hlZkh0bWwiLCByZS5TKQpyZXBsYWNlbWVudCA9IHInJydmdW5jdGlvbiBsZWFkZXJQY3Qodil7CiAgaWYodj09PW51bGx8fHY9PT11bmRlZmluZWR8fHY9PT0nJykgcmV0dXJuICfigJQnOwogIGNvbnN0IG49TnVtYmVyKHYpOwogIHJldHVybiBOdW1iZXIuaXNGaW5pdGUobik/bi50b0ZpeGVkKDIpLnJlcGxhY2UoJy4nLCcsJykrJyUnOifigJQnOwp9CmZ1bmN0aW9uIGxlYWRlclVuaXRIdG1sKHIpewogIGNvbnN0IGE9ci5hdG8sYz1yLmNhc2gsZz1yLnNjaGVkdWxlOwogIGNvbnN0IGF0b09rPWEmJmEuc3RhdHVzPT09J9CT0L7RgtC+0LLQvicsY2FzaE9rPWMmJmMuc3RhdHVzPT09J9CX0LDQv9C+0LvQvdC10L3Qvicsc2NoZWRPaz1nJiZnLm9rOwogIGNvbnN0IG92ZXJhbGw9YXRvT2smJmNhc2hPayYmc2NoZWRPazsKICBjb25zdCBtYW5hZ2VyPShhJiZhLm1hbmFnZXIpfHwoYyYmYy5tYW5hZ2VyKXx8ci51Lm1hbmFnZXJ8fCfQnNC10L3QtdC00LbQtdGAINC90LUg0YPQutCw0LfQsNC9JzsKICByZXR1cm4gYDxkaXYgY2xhc3M9InVuaXQtY2FyZCI+PGRpdiBjbGFzcz0idW5pdC10b3AiPjxkaXY+PGRpdiBjbGFzcz0idW5pdC1uYW1lIj4ke3IudS50aXRsZX08L2Rpdj48ZGl2IGNsYXNzPSJ1bml0LW1hbmFnZXIiPiR7bWFuYWdlcn08L2Rpdj48L2Rpdj48c3BhbiBjbGFzcz0idW5pdC1zdGF0ZSAke292ZXJhbGw/J29rJzond2Fybid9Ij4ke292ZXJhbGw/J9CS0YHRkSDQt9Cw0L/QvtC70L3QtdC90L4nOifQldGB0YLRjCDQv9GA0L7QsdC10LvRiyd9PC9zcGFuPjwvZGl2PjxkaXYgY2xhc3M9InVuaXQtc3RhdHVzZXMiPjxkaXYgY2xhc3M9InN0YXR1cy1jZWxsIiBzdHlsZT0iZ3JpZC1jb2x1bW46MS8tMSI+PHNtYWxsPtCe0LHRidC40Lkg0JDQotCeINC/0L4g0L7QsdGK0LXQutGC0YM8L3NtYWxsPjxiIGNsYXNzPSIke2F0b09rPydnb29kJzonYmFkJ30iPiR7YXRvT2s/bGVhZGVyUGN0KGEuYXRvKTon0J3QtSDQt9Cw0L/QvtC70L3QtdC90L4nfTwvYj48L2Rpdj48ZGl2IGNsYXNzPSJzdGF0dXMtY2VsbCI+PHNtYWxsPtCi0LXRhdC90L7Qu9C+0LPQuCDQv9GA0L7QuNC30LLQvtC00YHRgtCy0LA8L3NtYWxsPjxiIGNsYXNzPSIke2F0b09rPydnb29kJzonYmFkJ30iPiR7YXRvT2s/bGVhZGVyUGN0KGEucHJvZHVjdGlvbik6J+KAlCd9PC9iPjwvZGl2PjxkaXYgY2xhc3M9InN0YXR1cy1jZWxsIj48c21hbGw+0JHQsNGAPC9zbWFsbD48YiBjbGFzcz0iJHthdG9Paz8nZ29vZCc6J2JhZCd9Ij4ke2F0b09rP2xlYWRlclBjdChhLmJhcik6J+KAlCd9PC9iPjwvZGl2PjxkaXYgY2xhc3M9InN0YXR1cy1jZWxsIj48c21hbGw+0J/QtdC60LDRgNC90Y88L3NtYWxsPjxiIGNsYXNzPSIke2F0b09rPydnb29kJzonYmFkJ30iPiR7YXRvT2s/bGVhZGVyUGN0KGEuYmFrZXJ5KTon4oCUJ308L2I+PC9kaXY+PGRpdiBjbGFzcz0ic3RhdHVzLWNlbGwiPjxzbWFsbD7Qn9C+0LTQvtGC0YfRkdGCPC9zbWFsbD48YiBjbGFzcz0iJHtjYXNoT2s/J2dvb2QnOidiYWQnfSI+JHtjYXNoT2s/bW9uZXkoYy5hbW91bnQpOifQndC1INC30LDQv9C+0LvQvdC10L3Qvid9PC9iPjwvZGl2PjxkaXYgY2xhc3M9InN0YXR1cy1jZWxsIj48c21hbGw+0JPRgNCw0YTQuNC6PC9zbWFsbD48YiBjbGFzcz0iJHtzY2hlZE9rPydnb29kJzonYmFkJ30iPiR7Zz9nLmZpbGxlZCsnINC40LcgJytnLnRvdGFsOifQndC10YIg0L7RgtCy0LXRgtCwJ308L2I+PC9kaXY+PC9kaXY+PC9kaXY+YDsKfQpmdW5jdGlvbiBsZWFkZXJDaGVmSHRtbCcnJwpzMiwgbiA9IHBhdHRlcm4uc3VibihyZXBsYWNlbWVudCwgcywgY291bnQ9MSkKaWYgbjoKICAgIHMgPSBzMgoKcC53cml0ZV90ZXh0KHMsIGVuY29kaW5nPSJ1dGYtOCIpCg==' | base64 -d > /tmp/patch.py
+          python3 /tmp/patch.py
       - name: Commit changes
         run: |
-          if git diff --quiet; then
-            echo "No changes needed"
-            exit 0
-          fi
+          if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
