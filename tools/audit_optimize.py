@@ -1,0 +1,268 @@
+from pathlib import Path
+import re
+
+p = Path('index.html')
+s = p.read_text(encoding='utf-8')
+
+
+def once(old, new, label):
+    global s
+    c = s.count(old)
+    if c != 1:
+        raise SystemExit(f'{label}: expected 1 anchor, found {c}')
+    s = s.replace(old, new, 1)
+
+
+# Network warmup and metadata.
+once('<meta name="theme-color" content="#f2ece3">', '<meta name="theme-color" content="#f2ece3">\n<meta name="description" content="Внутренний рабочий портал менеджеров Круассан Кафе">\n<link rel="preconnect" href="https://script.google.com" crossorigin>\n<link rel="dns-prefetch" href="//script.google.com">', 'head performance')
+
+# Better error readability on mobile.
+once('.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#211b17;color:#fff;border-radius:999px;padding:11px 16px;font-weight:800;font-size:12px;opacity:0;pointer-events:none;transition:.2s;z-index:80;box-shadow:0 15px 40px rgba(0,0,0,.2)}', '.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#211b17;color:#fff;border-radius:18px;padding:11px 16px;font-weight:800;font-size:12px;line-height:1.3;max-width:calc(100% - 32px);white-space:normal;text-align:left;opacity:0;pointer-events:none;transition:.2s;z-index:80;box-shadow:0 15px 40px rgba(0,0,0,.2)}', 'toast')
+
+# Remove misleading PIN change action; current backend PIN is fixed.
+old_admin = '<div class="card admin-card"><h3>Синхронизация</h3><p><b>АТО, график и подотчёт</b> синхронизируются с Google Sheets. Ревизия и табель пока сохраняются локально.</p><div class="actions-row"><button id="resetPinBtn" class="secondary" type="button">Сменить код доступа</button><button id="exportBtn" class="secondary" type="button">Выгрузить локальные данные</button></div></div>'
+new_admin = '<div class="card admin-card"><h3>Синхронизация</h3><p><b>АТО, график и подотчёт</b> синхронизируются с Google Sheets. Ревизия и табель пока сохраняются локально.</p><div class="actions-row"><button id="exportBtn" class="secondary" type="button">Выгрузить локальные данные</button></div></div>'
+once(old_admin, new_admin, 'admin card')
+once('>Отправить на e-mail</button>', '>Открыть в почте</button>', 'email label')
+
+# Local date instead of UTC date near midnight.
+once("const today=new Date().toISOString().slice(0,10);", "function localYmd(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}\nconst today=localYmd();", 'local today')
+
+# More robust schedule identity fallback across historical sheets.
+old_sched = r'''function scheduleApiIdentity(object,manager=''){
+  const m=scheduleBackendIdentity[object];
+  return m?{object:m.object,manager:m.manager}:{object,manager};
+}
+function scheduleRowMissing(err){return /Строка менеджера\/объекта не найдена/i.test(String(err?.message||err||''))}
+async function scheduleRead(object,manager,params={}){
+  const api=scheduleApiIdentity(object,manager||'');
+  try{return await jsonp('schedule',{object:api.object,manager:api.manager,...params})}
+  catch(e){
+    if(!scheduleRowMissing(e))throw e;
+    const fallback=String(manager||object||'').replace(/^Шеф(?:-бариста)?\s*·\s*/,'').trim();
+    if(!fallback||fallback===String(api.object).trim())throw e;
+    return await jsonp('schedule',{object:fallback,manager:fallback,...params});
+  }
+}
+async function scheduleWrite(data){
+  const api=scheduleApiIdentity(data.object,data.manager||'');
+  try{return await apiPost('schedule',{...data,object:api.object,manager:api.manager})}
+  catch(e){
+    if(!scheduleRowMissing(e))throw e;
+    const fallback=String(data.manager||data.object||'').replace(/^Шеф(?:-бариста)?\s*·\s*/,'').trim();
+    if(!fallback||fallback===String(api.object).trim())throw e;
+    return await apiPost('schedule',{...data,object:fallback,manager:fallback});
+  }
+}
+'''
+new_sched = r'''function scheduleApiIdentity(object,manager=''){
+  const m=scheduleBackendIdentity[object];
+  return m?{object:m.object,manager:m.manager}:{object,manager};
+}
+function scheduleRowMissing(err){return /Строка менеджера\/объекта не найдена/i.test(String(err?.message||err||''))}
+function scheduleCandidates(object,manager=''){
+  const mapped=scheduleApiIdentity(object,manager);
+  const cleanObject=String(object||'').replace(/^Шеф(?:-бариста)?\s*·\s*/,'').trim();
+  const cleanManager=String(manager||'').trim();
+  const raw=[mapped,{object,manager},{object:cleanManager,manager:cleanManager},{object:cleanObject,manager:cleanManager||cleanObject}];
+  const seen=new Set();
+  return raw.filter(x=>{
+    const objectValue=String(x.object||'').trim(),managerValue=String(x.manager||'').trim();
+    if(!objectValue&&!managerValue)return false;
+    const k=objectValue+'|'+managerValue;
+    if(seen.has(k))return false;
+    seen.add(k);x.object=objectValue;x.manager=managerValue;return true;
+  });
+}
+async function scheduleRead(object,manager,params={}){
+  for(const c of scheduleCandidates(object,manager)){
+    try{return await jsonp('schedule',{object:c.object,manager:c.manager,...params})}
+    catch(e){if(!scheduleRowMissing(e))throw e}
+  }
+  const who=String(manager||object||'').replace(/^Шеф(?:-бариста)?\s*·\s*/,'').trim();
+  throw new Error(`В таблице выбранного периода не найден сотрудник/объект: ${who||object}`);
+}
+async function scheduleWrite(data){
+  for(const c of scheduleCandidates(data.object,data.manager||'')){
+    try{return await apiPost('schedule',{...data,object:c.object,manager:c.manager})}
+    catch(e){if(!scheduleRowMissing(e))throw e}
+  }
+  const who=String(data.manager||data.object||'').replace(/^Шеф(?:-бариста)?\s*·\s*/,'').trim();
+  throw new Error(`В таблице выбранного периода не найден сотрудник/объект: ${who||data.object}`);
+}
+'''
+once(old_sched, new_sched, 'schedule lookup')
+
+# Bound localStorage growth and tolerate storage failures.
+once("function records(){try{return JSON.parse(localStorage.getItem(storeKey)||'[]')}catch{return[]}}\nfunction save(r){const a=records();a.push({...r,savedAt:new Date().toISOString()});localStorage.setItem(storeKey,JSON.stringify(a));}", "function records(){try{const v=JSON.parse(localStorage.getItem(storeKey)||'[]');return Array.isArray(v)?v:[]}catch{return[]}}\nfunction save(r){try{const a=records();a.push({...r,savedAt:new Date().toISOString()});if(a.length>500)a.splice(0,a.length-500);localStorage.setItem(storeKey,JSON.stringify(a))}catch(e){notify('Не удалось сохранить локально: хранилище устройства недоступно')}}", 'local storage cap')
+
+# Replace duplicate JSONP implementation with queue + read cache.
+old_jsonp = r'''function jsonpRequest(type,params={},action='read'){
+  return new Promise((resolve,reject)=>{
+    let pin;
+    try{pin=getPin()}catch(e){reject(e);return}
+    const cb='kruassan_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const u=new URL(API_URL);
+    u.searchParams.set('action',action);
+    u.searchParams.set('type',type);
+    u.searchParams.set('pin',pin);
+    u.searchParams.set('callback',cb);
+    Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v??''));
+    const sc=document.createElement('script');
+    const timer=setTimeout(()=>{cleanup();reject(new Error('Нет ответа от Google Sheets'))},90000);
+    function cleanup(){clearTimeout(timer);delete window[cb];sc.remove()}
+    window[cb]=(res)=>{
+      cleanup();
+      if(res&&res.ok) resolve(res.data);
+      else{const msg=res?.error||'Ошибка Google Sheets';authError(msg);reject(new Error(msg))}
+    };
+    sc.onerror=()=>{cleanup();reject(new Error('Не удалось подключиться к Google Sheets'))};
+    sc.src=u.toString();
+    document.body.appendChild(sc);
+  });
+}
+'''
+if s.count(old_jsonp) != 2:
+    raise SystemExit(f'jsonp duplicate count: expected 2, found {s.count(old_jsonp)}')
+new_jsonp = r'''const JSONP_MAX_CONCURRENT=8;
+const jsonpQueue=[];
+let jsonpActive=0;
+function drainJsonpQueue(){
+  while(jsonpActive<JSONP_MAX_CONCURRENT&&jsonpQueue.length){
+    const start=jsonpQueue.shift();jsonpActive++;
+    start(()=>{jsonpActive--;drainJsonpQueue()});
+  }
+}
+function jsonpRequest(type,params={},action='read'){
+  return new Promise((resolve,reject)=>{
+    jsonpQueue.push(done=>{
+      let pin;
+      try{pin=getPin()}catch(e){done();reject(e);return}
+      const cb='kruassan_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+      const u=new URL(API_URL);
+      u.searchParams.set('action',action);u.searchParams.set('type',type);u.searchParams.set('pin',pin);u.searchParams.set('callback',cb);
+      Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v??''));
+      const sc=document.createElement('script');let finished=false;
+      const timer=setTimeout(()=>finish(()=>reject(new Error('Google Sheets не ответил за 30 секунд'))),30000);
+      function finish(fn){if(finished)return;finished=true;clearTimeout(timer);delete window[cb];sc.remove();done();if(fn)fn()}
+      window[cb]=(res)=>finish(()=>{if(res&&res.ok)resolve(res.data);else{const msg=res?.error||'Ошибка Google Sheets';authError(msg);reject(new Error(msg))}});
+      sc.onerror=()=>finish(()=>reject(new Error('Не удалось подключиться к Google Sheets')));
+      sc.src=u.toString();document.body.appendChild(sc);
+    });
+    drainJsonpQueue();
+  });
+}
+
+const READ_CACHE_TTL=15000;
+const readCache=new Map();
+const readInflight=new Map();
+function readKey(type,params){return JSON.stringify([type,Object.entries(params).sort(([a],[b])=>a.localeCompare(b))])}
+function jsonp(type,params={}){
+  const key=readKey(type,params),now=Date.now(),cached=readCache.get(key);
+  if(cached&&now-cached.at<READ_CACHE_TTL)return Promise.resolve(cached.data);
+  if(readInflight.has(key))return readInflight.get(key);
+  const req=jsonpRequest(type,params,'read').then(data=>{readCache.set(key,{at:Date.now(),data});return data}).finally(()=>readInflight.delete(key));
+  readInflight.set(key,req);return req;
+}
+function clearReadCaches(){readCache.clear();readInflight.clear()}
+function apiPost(type,data){return jsonpRequest(type,{data:JSON.stringify(data)},'write').then(result=>{clearReadCaches();return result})}
+'''
+s = s.replace(old_jsonp, new_jsonp, 1)
+s = s.replace(old_jsonp, '', 1)
+old_wrappers = r'''function jsonp(type,params={}){
+  return jsonpRequest(type,params,'read');
+}
+
+function apiPost(type,data){
+  return jsonpRequest(type,{data:JSON.stringify(data)},'write');
+}
+
+'''
+once(old_wrappers, '', 'old jsonp wrappers')
+
+# Stale ATO read protection.
+once("const atoObject=atoForm.elements.object;\nasync function loadAto(){\n  if(!atoObject.value)return;", "const atoObject=atoForm.elements.object;\nlet atoLoadSeq=0;\nasync function loadAto(){\n  if(!atoObject.value)return;\n  const seq=++atoLoadSeq,obj=atoObject.value;", 'ato seq start')
+once("    const d=await jsonp('ato',{object:atoObject.value});\n    atoForm.elements.manager.value=d.manager||'';", "    const d=await jsonp('ato',{object:obj});\n    if(seq!==atoLoadSeq||atoObject.value!==obj)return;\n    atoForm.elements.manager.value=d.manager||'';", 'ato seq apply')
+once("  }catch(e){notify('Ошибка: '+e.message)}finally{atoForm.classList.remove('field-loading')}\n}\natoObject.addEventListener('change',loadAto);", "  }catch(e){if(seq===atoLoadSeq)notify('Ошибка: '+e.message)}finally{if(seq===atoLoadSeq)atoForm.classList.remove('field-loading')}\n}\natoObject.addEventListener('change',loadAto);", 'ato seq finish')
+
+# Schedule stale read protection + faster lookup map + reset detached chip target.
+once("periodSelect.innerHTML=periods.map((p,i)=>`<option value=\"${i}\">${periodLabel(p.s,p.e)}</option>`).join('');\n\nfunction renderSchedule(){", "periodSelect.innerHTML=periods.map((p,i)=>`<option value=\"${i}\">${periodLabel(p.s,p.e)}</option>`).join('');\nlet activeScheduleInput=null;\nlet scheduleLoadSeq=0;\n\nfunction renderSchedule(){\n  activeScheduleInput=null;", 'schedule state')
+old_load = r'''async function loadSchedule(){
+  const obj=scheduleObject.value;
+  if(!obj)return;
+  const p=periods[+periodSelect.value||0];
+  try{
+    scheduleForm.classList.add('field-loading');
+    const d=await scheduleRead(obj,scheduleManager.value||'',{start:ymd(p.s),end:ymd(p.e)});
+    document.querySelectorAll('#scheduleList input[data-date]').forEach(i=>i.value='');
+    (d.entries||[]).forEach(x=>{const shownDate=clientScheduleDate(x.date);const i=document.querySelector(`#scheduleList input[data-date="${shownDate}"]`);if(i)i.value=x.value||''});
+    notify('График загружен из Google Sheets');
+  }catch(e){notify('Ошибка: '+e.message)}finally{scheduleForm.classList.remove('field-loading')}
+}
+'''
+new_load = r'''async function loadSchedule(){
+  const obj=scheduleObject.value;
+  if(!obj)return;
+  const seq=++scheduleLoadSeq,periodIndex=+periodSelect.value||0,manager=scheduleManager.value||'',p=periods[periodIndex];
+  try{
+    scheduleForm.classList.add('field-loading');
+    const d=await scheduleRead(obj,manager,{start:ymd(p.s),end:ymd(p.e)});
+    if(seq!==scheduleLoadSeq||scheduleObject.value!==obj||(+periodSelect.value||0)!==periodIndex)return;
+    const inputs=new Map([...document.querySelectorAll('#scheduleList input[data-date]')].map(i=>[i.dataset.date,i]));
+    inputs.forEach(i=>i.value='');
+    (d.entries||[]).forEach(x=>{const i=inputs.get(clientScheduleDate(x.date));if(i)i.value=x.value||''});
+    notify('График загружен из Google Sheets');
+  }catch(e){if(seq===scheduleLoadSeq)notify('Ошибка: '+e.message)}finally{if(seq===scheduleLoadSeq)scheduleForm.classList.remove('field-loading')}
+}
+'''
+once(old_load, new_load, 'schedule load')
+once("let activeScheduleInput=null;\ndocument.getElementById('scheduleList').addEventListener", "document.getElementById('scheduleList').addEventListener", 'remove late active input declaration')
+
+# Leader dashboard stale refresh protection.
+once("async function loadLeader(){\n  if(!leaderPeriod)return;\n  const p=periods[+leaderPeriod.value||0],loading=document.getElementById('leaderLoading');", "let leaderLoadSeq=0;\nasync function loadLeader(){\n  if(!leaderPeriod)return;\n  const seq=++leaderLoadSeq,periodIndex=+leaderPeriod.value||0,p=periods[periodIndex],loading=document.getElementById('leaderLoading');", 'leader seq start')
+once("  loading.textContent='Загружаю данные по всей сети…';loading.hidden=false;unitsBox.innerHTML='';chefsBox.innerHTML='';summaryBox.innerHTML='';alertsBox.innerHTML='';\n  try{", "  loading.textContent='Загружаю данные по всей сети…';loading.hidden=false;unitsBox.innerHTML='';chefsBox.innerHTML='';summaryBox.innerHTML='';alertsBox.innerHTML='';\n  if(leaderRefresh)leaderRefresh.disabled=true;\n  try{", 'leader disable')
+once("    const [units,chefs]=await Promise.all([Promise.all(leaderUnits.map(x=>getLeaderUnit(x,p))),Promise.all(leaderChefs.map(x=>getLeaderChef(x,p)))]);\n    unitsBox.innerHTML=units.map(leaderUnitHtml).join('');chefsBox.innerHTML=chefs.map(leaderChefHtml).join('');", "    const [units,chefs]=await Promise.all([Promise.all(leaderUnits.map(x=>getLeaderUnit(x,p))),Promise.all(leaderChefs.map(x=>getLeaderChef(x,p)))]);\n    if(seq!==leaderLoadSeq||(+leaderPeriod.value||0)!==periodIndex)return;\n    unitsBox.innerHTML=units.map(leaderUnitHtml).join('');chefsBox.innerHTML=chefs.map(leaderChefHtml).join('');", 'leader seq apply')
+once("    loading.hidden=true;\n  }catch(e){loading.textContent='Не удалось собрать сводку: '+e.message}\n}\nif(leaderPeriod) leaderPeriod.onchange=loadLeader;", "    loading.hidden=true;\n  }catch(e){if(seq===leaderLoadSeq)loading.textContent='Не удалось собрать сводку: '+e.message}\n  finally{if(seq===leaderLoadSeq&&leaderRefresh)leaderRefresh.disabled=false}\n}\nif(leaderPeriod) leaderPeriod.onchange=loadLeader;", 'leader seq finish')
+
+# Escape dynamic text from Sheets before innerHTML insertion.
+s = s.replace('${r.u.title}</div><div class="unit-manager">${manager}</div>', '${esc(r.u.title)}</div><div class="unit-manager">${esc(manager)}</div>', 1)
+s = s.replace('${r.u.title}</div><div class="unit-manager">${r.u.area}</div>', '${esc(r.u.title)}</div><div class="unit-manager">${esc(r.u.area)}</div>', 1)
+once("alertsBox.innerHTML=alerts.length?alerts.map(x=>`<div class=\"leader-alert\">${x}</div>`).join(''):'<div class=\"leader-alert good\">По выбранному периоду всё заполнено.</div>';", "alertsBox.innerHTML=alerts.length?alerts.map(x=>`<div class=\"leader-alert\">${esc(x)}</div>`).join(''):'<div class=\"leader-alert good\">По выбранному периоду всё заполнено.</div>';", 'leader alert escaping')
+
+# Cash stale read protection.
+once("const cashObject=cashForm.elements.object;\nasync function loadCash(){\n  if(!cashObject.value)return;", "const cashObject=cashForm.elements.object;\nlet cashLoadSeq=0;\nasync function loadCash(){\n  if(!cashObject.value)return;\n  const seq=++cashLoadSeq,obj=cashObject.value;", 'cash seq start')
+once("    const d=await jsonp('cash',{object:cashObject.value});\n    cashForm.elements.manager.value=d.manager||'';", "    const d=await jsonp('cash',{object:obj});\n    if(seq!==cashLoadSeq||cashObject.value!==obj)return;\n    cashForm.elements.manager.value=d.manager||'';", 'cash seq apply')
+once("  }catch(e){notify('Ошибка: '+e.message)}finally{cashForm.classList.remove('field-loading')}\n}\ncashObject.addEventListener('change',loadCash);", "  }catch(e){if(seq===cashLoadSeq)notify('Ошибка: '+e.message)}finally{if(seq===cashLoadSeq)cashForm.classList.remove('field-loading')}\n}\ncashObject.addEventListener('change',loadCash);", 'cash seq finish')
+
+# Safer CSV and Safari-compatible download flow.
+once("function csvEscape(v=''){return `\"${String(v).replaceAll('\\\"','\\\"\\\"')}\"`}", "function csvEscape(v=''){let x=String(v);if(/^[=+\\-@]/.test(x))x=\"'\"+x;return `\"${x.replaceAll('\\\"','\\\"\\\"')}\"`}\nfunction downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}", 'safe csv')
+old_export = r'''  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=`manager-portal-${today}.csv`;a.click();URL.revokeObjectURL(a.href);
+};
+document.getElementById('resetPinBtn').onclick=()=>{
+  localStorage.removeItem(PIN_KEY);
+  try{const p=getPin(true);notify('Новый код сохранён на устройстве')}catch(e){notify(e.message)}
+};
+'''
+once(old_export, "  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});\n  downloadBlob(blob,`manager-portal-${today}.csv`);\n};\n", 'export download')
+once("document.getElementById('downloadTpl').onclick=()=>{const f=makeFile(),a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};", "document.getElementById('downloadTpl').onclick=()=>{const f=makeFile();downloadBlob(f,f.name)};", 'word download')
+
+p.write_text(s, encoding='utf-8')
+
+# Static consistency checks.
+scripts = re.findall(r'<script>(.*?)</script>', s, re.S)
+if len(scripts) != 1:
+    raise SystemExit(f'expected one inline script, got {len(scripts)}')
+Path('/tmp/app.js').write_text(scripts[0], encoding='utf-8')
+ids = re.findall(r'\bid="([^"]+)"', s)
+dup = sorted({x for x in ids if ids.count(x) > 1})
+if dup:
+    raise SystemExit('duplicate ids: ' + ', '.join(dup))
+if s.count('function jsonpRequest(') != 1:
+    raise SystemExit('jsonpRequest must be defined exactly once')
+views = set(re.findall(r'<section id="([^"]+)View"', s))
+opens = set(re.findall(r'data-open="([^"]+)"', s))
+missing = opens - views
+if missing:
+    raise SystemExit('data-open without view: ' + ', '.join(sorted(missing)))
+print('Static HTML checks OK; bytes:', len(s.encode('utf-8')))
