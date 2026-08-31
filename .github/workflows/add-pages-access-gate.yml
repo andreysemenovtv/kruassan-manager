@@ -1,0 +1,48 @@
+name: Add GitHub Pages access gate
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add access gate
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          if 'id="accessGate"' in s:
+              print('Access gate already exists')
+          else:
+              if '<meta name="robots"' not in s:
+                  s=s.replace('<meta name="description" content="Внутренний рабочий портал менеджеров Круассан Кафе">','<meta name="description" content="Внутренний рабочий портал менеджеров Круассан Кафе">\n<meta name="robots" content="noindex,nofollow">',1)
+              css='''\nbody.site-locked{overflow:hidden}\n.access-gate{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:22px;background:linear-gradient(145deg,#f3ede5,#eadccb);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif}\n.access-gate.hidden{display:none}\n.access-card{width:min(390px,100%);background:#fffdf9;border:1px solid #dfd4c7;border-radius:28px;padding:25px;box-shadow:0 24px 70px rgba(54,40,27,.16)}\n.access-brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}\n.access-logo{width:50px;height:50px;border-radius:50%;background:#241d18;color:#f5e6d2;display:grid;place-items:center;font-family:Georgia,serif;font-size:25px}\n.access-brand b{display:block;font-family:Georgia,"Times New Roman",serif;font-size:23px}.access-brand small{display:block;margin-top:4px;color:#7b7067;font-size:10px;letter-spacing:.12em;text-transform:uppercase}\n.access-card h2{font-family:Georgia,"Times New Roman",serif;font-size:34px;line-height:1;margin:0 0 9px}.access-card p{margin:0 0 18px;color:#7b7067;font-size:14px;line-height:1.45}\n.access-card label{display:grid;gap:8px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:800;color:#675b51}.access-card input{font-size:20px;letter-spacing:.12em;text-align:center}.access-card button{width:100%;margin-top:13px}.access-error{margin-top:11px;color:#984b44;font-size:12px;font-weight:750;text-align:center}\n'''
+              if '</style>' not in s: raise SystemExit('style end not found')
+              s=s.replace('</style>',css+'</style>',1)
+              gate='''\n<div id="accessGate" class="access-gate" role="dialog" aria-modal="true" aria-labelledby="accessTitle">\n  <form id="accessForm" class="access-card" autocomplete="off">\n    <div class="access-brand"><div class="access-logo">К</div><div><b>Круассан Кафе</b><small>внутренний портал</small></div></div>\n    <h2 id="accessTitle">Вход в портал</h2>\n    <p>Введите код доступа для сотрудников.</p>\n    <label>Код доступа<input id="accessCode" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="off" placeholder="•••" required autofocus></label>\n    <button class="primary" type="submit">Войти</button>\n    <div id="accessError" class="access-error" hidden>Неверный код</div>\n  </form>\n</div>\n'''
+              if '<body>' not in s: raise SystemExit('body anchor not found')
+              s=s.replace('<body>','<body class="site-locked">'+gate,1)
+              js='''\nconst SITE_ACCESS_KEY='kruassan_site_access_v1';\nfunction unlockPortal(){\n  document.body.classList.remove('site-locked');\n  document.getElementById('accessGate')?.classList.add('hidden');\n}\ntry{if(localStorage.getItem(SITE_ACCESS_KEY)==='ok')unlockPortal()}catch(e){}\ndocument.getElementById('accessForm')?.addEventListener('submit',e=>{\n  e.preventDefault();\n  const input=document.getElementById('accessCode'),err=document.getElementById('accessError');\n  if(input.value==='123'){\n    try{localStorage.setItem(SITE_ACCESS_KEY,'ok')}catch(e){}\n    err.hidden=true;unlockPortal();\n  }else{err.hidden=false;input.value='';input.focus()}\n});\n'''
+              if '<script>' not in s: raise SystemExit('script anchor not found')
+              s=s.replace('<script>','<script>'+js,1)
+              p.write_text(s,encoding='utf-8')
+          scripts=re.findall(r'<script>(.*?)</script>',p.read_text(encoding='utf-8'),re.S)
+          if len(scripts)!=1: raise SystemExit('unexpected inline script count')
+          Path('/tmp/app.js').write_text(scripts[0],encoding='utf-8')
+          PY
+          node --check /tmp/app.js
+      - name: Commit access gate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Add employee access gate for GitHub Pages"
+          git push
