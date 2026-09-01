@@ -1,0 +1,30 @@
+from pathlib import Path
+import re
+p=Path('index.html')
+s=p.read_text()
+css='''
+/* HOME_TILES_V3 */
+.tile.tile-forms{background:linear-gradient(145deg,#f4e5d6 0%,#ead2bc 100%);border-color:#dfc3aa}
+.tile.tile-training{background:linear-gradient(145deg,#e8e1d8 0%,#d9c9b9 100%);border-color:#cfbba8}
+.tile.tile-schedule{background:linear-gradient(145deg,#2d2925 0%,#40372f 100%);color:#fff;border-color:#332d28}
+.tile.tile-schedule .tile-desc{color:#d7cdc5}.tile.tile-schedule .tile-icon{background:rgba(255,255,255,.11);color:#f5dfc8}.tile.tile-schedule .tile-arrow{color:#ead7c5}
+.tile.tile-ato{background:linear-gradient(145deg,#e2e8df 0%,#ccd8c8 100%);border-color:#c2d0bd}
+.tile.tile-expenses{background:linear-gradient(145deg,#eee0dc 0%,#dfcbc4 100%);border-color:#d5bfb7}
+.tile.tile-leader{background:linear-gradient(145deg,#ece5dc 0%,#ddd2c5 100%);border-color:#d3c6b8}
+.tile.tile-forms .tile-icon{background:#fff3e8;color:#8b5d37}.tile.tile-training .tile-icon{background:#f7eee6;color:#71543e}.tile.tile-ato .tile-icon{background:#f2f6ef;color:#52634e}.tile.tile-expenses .tile-icon{background:#f8eeeb;color:#76564d}.tile.tile-leader .tile-icon{background:#f7f1ea;color:#655445}
+'''
+if '/* HOME_TILES_V3 */' not in s:s=s.replace('</style>',css+'\n</style>',1)
+new='''<div class="grid">
+    <button class="tile tile-forms" data-open="forms"><span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 3.5h7l4 4v13H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/><path d="M14 3.5v5h4M8.5 12h6.5M8.5 15h6.5"/></svg></span><span class="tile-title">Бланки</span><span class="tile-desc">Заявления и рабочие документы</span><span class="tile-arrow">›</span></button>
+    <button class="tile tile-training" type="button" onclick="location.href='training.html'"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21V5.5Zm16 0A2.5 2.5 0 0 0 17.5 3H13v16h4.5A2.5 2.5 0 0 1 20 21V5.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span><span class="tile-badge">Для менеджеров</span><span class="tile-title">База обучения</span><span class="tile-desc">Методички: открыть, скачать PDF или поделиться</span><span class="tile-arrow">›</span></button>
+    <button class="tile tile-schedule" data-open="schedule"><span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="5.2" width="17" height="15" rx="3"/><path d="M7.5 3.5v3.4M16.5 3.5v3.4M3.7 9.3h16.6M7 13h3M14 13h3M7 16.5h3"/></svg></span><span class="tile-badge">Основное</span><span class="tile-title">График</span><span class="tile-desc">Смены менеджеров и шефов</span><span class="tile-arrow">›</span></button>
+    <button class="tile tile-ato" data-open="ato"><span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19.5V12h4v7.5M10 19.5V7h4v12.5M16 19.5V3.5h4v16"/><path d="M3 20.5h18"/></svg></span><span class="tile-title">АТО</span><span class="tile-desc">Общий АТО за полный месяц по объекту и подразделениям</span><span class="tile-arrow">›</span></button>
+    <button class="tile tile-expenses" data-open="expenses"><span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="5" width="17" height="14" rx="3"/><path d="M16.2 10h4.3v4h-4.3a2 2 0 0 1 0-4Z"/><circle cx="16.5" cy="12" r=".6" fill="currentColor"/></svg></span><span class="tile-title">Подотчёт</span><span class="tile-desc">Потребность в наличке по объекту</span><span class="tile-arrow">›</span></button>
+    <!-- LEADER_TILE -->
+    <button class="tile tile-leader" data-open="leader"><span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V9l8-5 8 5v10"/><path d="M8 19v-6h8v6M3 20h18"/><circle cx="12" cy="9" r="1.4"/></svg></span><span class="tile-badge">Руководителю</span><span class="tile-title">Вся сеть</span><span class="tile-desc">АТО, подотчёт и графики всех подразделений</span><span class="tile-arrow">›</span></button>
+  </div>'''
+pat=r'<div class="grid">\s*<!-- LEADER_TILE -->.*?</div>\s*<div class="quick-note">'
+m=re.search(pat,s,re.S)
+if not m:raise SystemExit('home grid not found')
+s=s[:m.start()]+new+'\n  <div class="quick-note">'+s[m.end():]
+p.write_text(s)
