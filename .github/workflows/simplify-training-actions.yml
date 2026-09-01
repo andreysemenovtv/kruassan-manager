@@ -1,0 +1,65 @@
+name: Simplify training actions
+
+on:
+  push:
+    paths:
+      - '.github/workflows/simplify-training-actions.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Keep only open download share
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('training.html')
+          s = p.read_text(encoding='utf-8')
+
+          s = s.replace('<button class="btn orange" id="vprint">Печать</button>', '<button class="btn orange" id="vdownload">Скачать PDF</button>')
+          s = s.replace('<span class="step">3. PDF / печать</span>', '<span class="step">3. Скачать / поделиться</span>')
+          s = s.replace('Выберите должность и нужный материал. Для каждого доступны быстрый просмотр и готовый PDF для печати.', 'Выберите должность и нужный материал. Для каждого доступны просмотр, скачивание PDF и отправка через системное меню «Поделиться».')
+
+          start = s.find('function waitImagesAndPrint()')
+          end = s.find('async function nativeShare', start)
+          if start != -1 and end != -1:
+              s = s[:start] + s[end:]
+
+          start = s.find('function printRole(id)')
+          end = s.find("document.getElementById('close')", start)
+          if start != -1 and end != -1:
+              s = s[:start] + s[end:]
+
+          s = s.replace("document.getElementById('vprint').onclick=()=>{if(currentLesson)window.print()};\n", "document.getElementById('vdownload').onclick=()=>{if(currentLesson)downloadPdf(currentLesson)};\n")
+
+          s = s.replace('<button class="mini print" data-print="'+"'"+'+esc(id)+'+"'"+'">Печать</button>', '<button class="mini pdf" data-pdf="'+"'"+'+esc(id)+'+"'"+'">Скачать PDF</button>')
+          s = s.replace('<button class="btn light" id="rolePrint">Печать комплекта</button>', '')
+          s = s.replace(" document.getElementById('rolePrint').onclick=()=>printRole(current.id);\n", '')
+          s = s.replace(" content.querySelectorAll('[data-print]').forEach(b=>b.onclick=()=>printLesson(b.dataset.print));\n", " content.querySelectorAll('[data-pdf]').forEach(b=>b.onclick=()=>downloadPdf(b.dataset.pdf));\n")
+
+          # Compatibility with compact/no-leading-space formatting.
+          s = s.replace("document.getElementById('rolePrint').onclick=()=>printRole(current.id);\n", '')
+          s = s.replace("content.querySelectorAll('[data-print]').forEach(b=>b.onclick=()=>printLesson(b.dataset.print));\n", "content.querySelectorAll('[data-pdf]').forEach(b=>b.onclick=()=>downloadPdf(b.dataset.pdf));\n")
+
+          if 'data-print=' in s or 'id="rolePrint"' in s or 'id="vprint"' in s or '>Печать</button>' in s or '>Печать комплекта</button>' in s:
+              raise SystemExit('Visible print controls remain after patch')
+          for required in ['data-open=', 'data-pdf=', 'data-share=', 'id="vdownload"', 'id="vshare"', 'id="rolePdf"', 'id="roleShare"']:
+              if required not in s:
+                  raise SystemExit('Required action missing: ' + required)
+
+          p.write_text(s, encoding='utf-8')
+      - name: Remove temporary workflow
+        run: rm .github/workflows/simplify-training-actions.yml
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add training.html .github/workflows/simplify-training-actions.yml
+          git commit -m "Keep only open download and share in training" || exit 0
+          git push origin HEAD:main
