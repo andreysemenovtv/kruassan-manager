@@ -57,7 +57,7 @@ button,input{font:inherit}button{touch-action:manipulation}a{text-decoration:non
 <div class="vbar">
 <div class="vleft">
 <button class="btn dark" id="close">← Назад</button>
-<button class="btn orange" id="vprint">Печать</button>
+<button class="btn orange" id="vdownload">Скачать PDF</button>
 <button class="btn share" id="vshare">Поделиться</button>
 </div>
 <div id="vstatus" class="status"></div>
@@ -123,15 +123,6 @@ function openLesson(id){
  currentLesson=id;viewer.classList.add('on');document.body.style.overflow='hidden';vstatus.textContent=title(id);paper.innerHTML='<div class="previewload">Открываю материал…</div>';
  loadData().then(map=>{setLesson(id,map);viewer.scrollTop=0}).catch(()=>{paper.innerHTML='<h1>'+esc(title(id))+'</h1><p>Предпросмотр не загрузился. PDF доступен независимо от предпросмотра.</p><button class="btn orange" id="fallbackPdf">Открыть PDF</button>';document.getElementById('fallbackPdf').onclick=()=>downloadPdf(id)});
 }
-function waitImagesAndPrint(){
- const imgs=[...paper.images],pending=imgs.filter(x=>!x.complete);if(!pending.length){setTimeout(()=>window.print(),50);return}
- let left=pending.length;const done=()=>{if(--left===0)setTimeout(()=>window.print(),50)};
- pending.forEach(i=>{i.addEventListener('load',done,{once:true});i.addEventListener('error',done,{once:true})});
-}
-function printLesson(id){
- currentLesson=id;viewer.classList.add('on');document.body.style.overflow='hidden';vstatus.textContent=title(id);paper.innerHTML='<div class="previewload">Готовлю материал к печати…</div>';
- loadData().then(map=>{setLesson(id,map);viewer.scrollTop=0;waitImagesAndPrint()}).catch(()=>{viewer.classList.remove('on');document.body.style.overflow='';if(confirm('Веб-версию не удалось подготовить. Открыть готовый PDF для печати?'))downloadPdf(id)});
-}
 async function nativeShare(titleText,text,url){
  if(!url){alert('PDF не найден.');return}
  if(navigator.share){
@@ -142,17 +133,8 @@ async function nativeShare(titleText,text,url){
 }
 function shareLesson(id){const url=pdfLink(id),nm=title(id);return nativeShare('Круассан Кафе — '+nm,'Материал для обучения: '+nm,url)}
 function shareRole(id){const url=rolePdfLink(id),p=PROGRAMS.find(x=>x.id===id);if(!p)return;return nativeShare('Круассан Кафе — комплект: '+p.title,'Полный комплект материалов для должности «'+p.title+'»',url)}
-function printRole(id){
- const p=PROGRAMS.find(x=>x.id===id);if(!p)return;
- viewer.classList.add('on');document.body.style.overflow='hidden';vstatus.textContent='Комплект: '+p.title;paper.innerHTML='<div class="previewload">Готовлю комплект к печати…</div>';
- loadData().then(map=>{
-   let out='',n=0;
-   p.sections.forEach(([section,items])=>{out+='<h1 style="page-break-before:'+(n?'always':'auto')+'">'+esc(section)+'</h1>';items.forEach(item=>{n++;const l=map.get(item);out+='<section style="page-break-inside:avoid;margin-bottom:28px"><h2>'+n+'. '+esc(title(item))+'</h2>'+(l?.html||'<p>Материал доступен в PDF.</p>')+(l?.visual?'<img class="visual" loading="eager" src="'+esc(l.visual)+'" alt="">':'')+'</section>'})});
-   paper.innerHTML=out;viewer.scrollTop=0;waitImagesAndPrint();
- }).catch(()=>{viewer.classList.remove('on');document.body.style.overflow='';if(confirm('Комплект не удалось подготовить в веб-версии. Открыть готовый PDF?'))downloadRolePdf(id)});
-}
 document.getElementById('close').onclick=()=>{viewer.classList.remove('on');document.body.style.overflow='';currentLesson=null};
-document.getElementById('vprint').onclick=()=>{if(currentLesson)window.print()};
+document.getElementById('vdownload').onclick=()=>{if(currentLesson)downloadPdf(currentLesson)};
 document.getElementById('vshare').onclick=()=>{if(currentLesson)shareLesson(currentLesson)};
 
 function renderTabs(){
@@ -165,19 +147,18 @@ function render(){
    const sec=document.createElement('section');sec.className='section';sec.innerHTML='<h3>'+esc(st)+'</h3>';const grid=document.createElement('div');grid.className='grid';
    items.forEach(id=>{const idx=++n,nm=title(id);if(q&&!nm.toLowerCase().includes(q))return;shown++;
      const c=document.createElement('article');c.className='card';
-     c.innerHTML='<div class="num">'+String(idx).padStart(2,'0')+'</div><div class="ct"><div class="title">'+esc(nm)+'</div><div class="meta">Материал для обучения</div><div class="actions"><button class="mini open" data-open="'+esc(id)+'">Открыть</button><button class="mini print" data-print="'+esc(id)+'">Печать</button><button class="mini share" data-share="'+esc(id)+'">Поделиться</button></div></div>';
+     c.innerHTML='<div class="num">'+String(idx).padStart(2,'0')+'</div><div class="ct"><div class="title">'+esc(nm)+'</div><div class="meta">Материал для обучения</div><div class="actions"><button class="mini open" data-open="'+esc(id)+'">Открыть</button><button class="mini pdf" data-pdf="'+esc(id)+'">Скачать PDF</button><button class="mini share" data-share="'+esc(id)+'">Поделиться</button></div></div>';
      grid.appendChild(c);
    });
    if(grid.children.length){sec.appendChild(grid);content.appendChild(sec)}
  });
  const h=document.createElement('div');h.className='rolehead';
- h.innerHTML='<div><h2>'+esc(current.title)+'</h2><p>'+shown+' материалов'+(q?' найдено':' · проходите сверху вниз')+'</p></div><div class="roleactions"><button class="btn orange" id="rolePdf">Скачать весь комплект PDF</button><button class="btn light" id="rolePrint">Печать комплекта</button><button class="btn share" id="roleShare">Поделиться комплектом</button></div>';
+ h.innerHTML='<div><h2>'+esc(current.title)+'</h2><p>'+shown+' материалов'+(q?' найдено':' · проходите сверху вниз')+'</p></div><div class="roleactions"><button class="btn orange" id="rolePdf">Скачать весь комплект PDF</button><button class="btn share" id="roleShare">Поделиться комплектом</button></div>';
  content.prepend(h);
  document.getElementById('rolePdf').onclick=()=>downloadRolePdf(current.id);
- document.getElementById('rolePrint').onclick=()=>printRole(current.id);
  document.getElementById('roleShare').onclick=()=>shareRole(current.id);
  content.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openLesson(b.dataset.open));
- content.querySelectorAll('[data-print]').forEach(b=>b.onclick=()=>printLesson(b.dataset.print));
+ content.querySelectorAll('[data-pdf]').forEach(b=>b.onclick=()=>downloadPdf(b.dataset.pdf));
  content.querySelectorAll('[data-share]').forEach(b=>b.onclick=()=>shareLesson(b.dataset.share));
  empty.style.display=shown?'none':'block';
 }
