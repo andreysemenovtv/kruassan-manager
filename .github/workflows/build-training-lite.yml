@@ -1,0 +1,72 @@
+name: Build Training Lite
+on:
+  push:
+    paths:
+      - '.github/workflows/build-training-lite.yml'
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Build lite data and patch loader
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, base64, hashlib, re
+
+          src=Path('training-data-compat.js').read_text(encoding='utf-8')
+          prefix='window.MANAGER_TRAINING='
+          assert src.startswith(prefix)
+          raw=src[len(prefix):].strip()
+          if raw.endswith(';'): raw=raw[:-1]
+          data=json.loads(raw)
+
+          out=Path('training-visuals')
+          out.mkdir(exist_ok=True)
+          seen={}
+          visual_count=0
+          for lesson in data.get('lessons',[]):
+              v=lesson.get('visual')
+              if not isinstance(v,str) or not v.startswith('data:image/'):
+                  continue
+              head,b64=v.split(',',1)
+              ext='jpg' if 'jpeg' in head else 'png' if 'png' in head else 'bin'
+              blob=base64.b64decode(b64)
+              h=hashlib.sha1(blob).hexdigest()[:16]
+              name=f'{h}.{ext}'
+              if h not in seen:
+                  (out/name).write_bytes(blob)
+                  seen[h]=name
+              lesson['visual']='training-visuals/'+seen[h]
+              visual_count+=1
+
+          lite=prefix+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';\n'
+          Path('training-data-lite.js').write_text(lite,encoding='utf-8')
+
+          p=Path('training.html')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('<script src="training-data-compat.js?v=1"></script>','')
+          loader='''<script>\n(function(){\n  var ua=navigator.userAgent||'';\n  var isAndroid=/Android/i.test(ua);\n  var m=ua.match(/Android\\s+(\\d+)/i);\n  var androidVersion=m?parseInt(m[1],10):0;\n  var memory=Number(navigator.deviceMemory||0);\n  var cores=Number(navigator.hardwareConcurrency||0);\n  var weakAndroid=isAndroid&&((memory>0&&memory<=3)||(androidVersion>0&&androidVersion<=10&&cores>0&&cores<=4));\n  window.__TRAINING_LITE__=weakAndroid;\n  var src=weakAndroid?'training-data-lite.js?v=1':'training-data-compat.js?v=2';\n  document.write('<script src="'+src+'"><\\/script>');\n})();\n</script>'''
+          marker='<script src="training-pdf-map.js"></script>'
+          if 'window.__TRAINING_LITE__' not in s:
+              if marker not in s: raise SystemExit('pdf map marker not found')
+              s=s.replace(marker,loader+marker,1)
+          old="async function loadTrainingData(){if(window.MANAGER_TRAINING)return 'compat';let b64=''"
+          new="async function loadTrainingData(){if(window.MANAGER_TRAINING)return window.__TRAINING_LITE__?'lite':'compat';let b64=''"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif "window.__TRAINING_LITE__?'lite':'compat'" not in s:
+              raise SystemExit('loadTrainingData compat marker not found')
+          p.write_text(s,encoding='utf-8')
+          print('lite bytes',len(lite.encode('utf-8')),'visual refs',visual_count,'unique visuals',len(seen))
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add training-data-lite.js training-visuals training.html
+          git commit -m 'Add lite mode for weak Android devices' || exit 0
+          git push origin HEAD:main
