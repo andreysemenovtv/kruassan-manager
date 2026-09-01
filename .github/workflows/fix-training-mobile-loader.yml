@@ -1,0 +1,44 @@
+name: Fix Training Mobile Loader
+
+on:
+  push:
+    paths:
+      - '.training-update/fix-mobile-loader.flag'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch training loader
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('training.html')
+          s=p.read_text(encoding='utf-8')
+          old="""  var weakAndroid=isAndroid&&((memory>0&&memory<=3)||(androidVersion>0&&androidVersion<=10&&cores>0&&cores<=4));
+  window.__TRAINING_LITE__=weakAndroid;
+  var src=weakAndroid?'training-data-lite.js?v=1':'training-data-compat.js?v=2';"""
+          new="""  var weakAndroid=isAndroid&&((memory>0&&memory<=3)||(androidVersion>0&&androidVersion<=10&&cores>0&&cores<=4));
+  var isIOS=/iPad|iPhone|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  var useLite=weakAndroid||isIOS;
+  window.__TRAINING_LITE__=useLite;
+  var src=useLite?'training-data-lite.js?v=2':'training-data-compat.js?v=2';"""
+          if old not in s:
+              raise SystemExit('Expected loader block not found; refusing unsafe patch')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add training.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Use lite training data on iOS and weak Android'
+          git push
