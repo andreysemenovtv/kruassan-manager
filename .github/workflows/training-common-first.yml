@@ -1,0 +1,46 @@
+name: Put common training first
+on:
+  push:
+    paths:
+      - '.github/workflows/training-common-first.yml'
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reorder training programs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('training.html')
+          s=p.read_text()
+          start=s.index('const PROGRAMS=[')
+          end=s.index('\n];', start)+3
+          block=s[start:end]
+          # Find the final common-program object and move it to the front.
+          marker="{id:'common',title:'Общее для всех'"
+          m=block.find(marker)
+          if m < 0:
+              raise SystemExit('common program not found')
+          # Common is currently the last item before closing array.
+          common=block[m:].rsplit('\n];',1)[0].rstrip()
+          if common.endswith(','):
+              common=common[:-1]
+          prefix=block[:m].rstrip()
+          if prefix.endswith(','):
+              prefix=prefix[:-1]
+          body=prefix[len('const PROGRAMS=['):].lstrip('\n')
+          new="const PROGRAMS=[\n"+common+",\n"+body+"\n];"
+          s=s[:start]+new+s[end:]
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add training.html
+          git commit -m "Put common training first"
+          git push
