@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - '.github/workflows/build-training-lite.yml'
+      - '.training-update/rebuild-lite.flag'
 permissions:
   contents: write
 jobs:
@@ -17,7 +18,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import json, base64, hashlib, re
+          import json, base64, hashlib
 
           src=Path('training-data-compat.js').read_text(encoding='utf-8')
           prefix='window.MANAGER_TRAINING='
@@ -50,7 +51,6 @@ jobs:
 
           p=Path('training.html')
           s=p.read_text(encoding='utf-8')
-          s=s.replace('<script src="training-data-compat.js?v=1"></script>','')
           old_loader="""  var weakAndroid=isAndroid&&((memory>0&&memory<=3)||(androidVersion>0&&androidVersion<=10&&cores>0&&cores<=4));
   window.__TRAINING_LITE__=weakAndroid;
   var src=weakAndroid?'training-data-lite.js?v=1':'training-data-compat.js?v=2';"""
@@ -68,7 +68,7 @@ jobs:
           if old in s:
               s=s.replace(old,new,1)
           elif "window.__TRAINING_LITE__?'lite':'compat'" not in s:
-              raise SystemExit('loadTrainingData compat marker not found')
+              raise SystemExit('loadTrainingData marker not found')
           p.write_text(s,encoding='utf-8')
           print('lite bytes',len(lite.encode('utf-8')),'visual refs',visual_count,'unique visuals',len(seen))
           PY
