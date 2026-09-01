@@ -1,0 +1,45 @@
+name: Build Training Compat
+on:
+  push:
+    paths:
+      - '.github/workflows/build-training-compat.yml'
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Build compatible training data and patch page
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, gzip
+          parts=['fix00a.txt','fix00b.txt','part01.txt','part02.txt','fix03a.txt','fix03b.txt','part04.txt','fix05a.txt','fix05b.txt','part06.txt','part07.txt','part08.txt','part09.txt','fix10a.txt','fix10b.txt','part11.txt','fix12a.txt','fix12b.txt','fix13a.txt','fix13b.txt','part14.txt','part15.txt']
+          b64=''.join(Path('training-data',p).read_text() for p in parts)
+          b64=''.join(b64.split())
+          assert len(b64)==312372, len(b64)
+          js=gzip.decompress(base64.b64decode(b64)).decode('utf-8')
+          assert js.startswith('window.MANAGER_TRAINING=')
+          Path('training-data-compat.js').write_text(js, encoding='utf-8')
+          p=Path('training.html')
+          s=p.read_text(encoding='utf-8')
+          compat='<script src="training-data-compat.js?v=1"></script>'
+          if compat not in s:
+              s=s.replace('<script src="training-pdf-map.js"></script>',compat+'<script src="training-pdf-map.js"></script>',1)
+          old="async function loadTrainingData(){let b64=''"
+          new="async function loadTrainingData(){if(window.MANAGER_TRAINING)return 'compat';let b64=''"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif "if(window.MANAGER_TRAINING)return 'compat'" not in s:
+              raise SystemExit('loadTrainingData marker not found')
+          p.write_text(s,encoding='utf-8')
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add training-data-compat.js training.html
+          git commit -m 'Fix training loading in iOS webviews' || exit 0
+          git push origin HEAD:main
