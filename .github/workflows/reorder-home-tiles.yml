@@ -1,19 +1,21 @@
-name: Reorder and style home tiles
+name: Home tiles update
 on:
   push:
-    paths:
-      - '.github/workflows/reorder-home-tiles.yml'
+    paths: [".github/workflows/reorder-home-tiles.yml"]
 permissions:
   contents: write
 jobs:
-  update:
+  update-home:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 .github/scripts/reorder_home.py
-      - run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+      - name: Apply home menu update
+        run: python3 .github/scripts/reorder_home.py
+      - name: Commit changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
           git commit -m "Reorder and restyle home tiles"
           git push
