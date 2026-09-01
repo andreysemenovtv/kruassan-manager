@@ -10,40 +10,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build training section
+      - name: Validate and publish training section
         shell: bash
         run: |
-          if [ ! -f .training-update/publish.flag ]; then
-            echo "No publish flag; nothing to do"
-            exit 0
-          fi
-          cat .training-update/payload.part* | base64 -d > /tmp/training-payload.zip
+          set -euo pipefail
+          test -f .training-update/publish.flag
+          cat .training-update/payload.part* | base64 --decode > /tmp/training-payload.zip
           python - <<'PY'
           from pathlib import Path
           import zipfile
-          with zipfile.ZipFile('/tmp/training-payload.zip') as z:
+          archive = Path('/tmp/training-payload.zip')
+          if not zipfile.is_zipfile(archive):
+              raise SystemExit('Training payload is not a valid ZIP archive')
+          with zipfile.ZipFile(archive) as z:
+              bad = z.testzip()
+              if bad:
+                  raise SystemExit(f'Corrupted file in training payload: {bad}')
+              names = set(z.namelist())
+              required = {'training.html', 'training-data.js'}
+              missing = required - names
+              if missing:
+                  raise SystemExit('Missing required training files: ' + ', '.join(sorted(missing)))
               z.extractall('.')
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          marker='    <button class="tile featured" data-open="schedule">'
-          tile='''    <!-- TRAINING_TILE -->
-    <button class="tile soft-gold" type="button" onclick="location.href='training.html'">
-      <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5v-16Z"/><path d="M7 7h2M15 7h2"/></svg></span>
-      <span class="tile-badge">База знаний</span><span class="tile-title">Обучение</span><span class="tile-desc">Пошаговые программы, стандарты и тесты</span><span class="tile-arrow">›</span>
-    </button>'''
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '    <button class="tile featured" data-open="schedule">'
+          tile = '\n'.join([
+              '    <!-- TRAINING_TILE -->',
+              '    <button class="tile soft-gold" type="button" onclick="location.href=\'training.html\'">',
+              '      <span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5v-16Z"/><path d="M7 7h2M15 7h2"/></svg></span>',
+              '      <span class="tile-badge">База знаний</span><span class="tile-title">Обучение</span><span class="tile-desc">Пошаговые программы, стандарты и тесты</span><span class="tile-arrow">›</span>',
+              '    </button>'
+          ])
           if '<!-- TRAINING_TILE -->' not in s:
               if marker not in s:
                   raise SystemExit('Home tile insertion marker not found')
-              s=s.replace(marker,tile+'\n'+marker,1)
-              p.write_text(s,encoding='utf-8')
+              s = s.replace(marker, tile + '\n' + marker, 1)
+              p.write_text(s, encoding='utf-8')
           PY
           rm -rf .training-update
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          if git diff --cached --quiet; then
-            echo "No changes"
-            exit 0
-          fi
+          git diff --cached --quiet && exit 0
           git commit -m "Add employee training section"
           git push
