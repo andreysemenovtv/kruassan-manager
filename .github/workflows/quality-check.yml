@@ -6,7 +6,23 @@ on:
   pull_request:
     branches:
       - main
+permissions:
+  contents: write
 jobs:
+  apply-home-menu:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply once
+        run: |
+          if grep -q 'HOME_TILES_V3' index.html; then exit 0; fi
+          python3 .github/scripts/reorder_home.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Reorder and restyle home tiles"
+          git push
   check:
     runs-on: ubuntu-latest
     steps:
