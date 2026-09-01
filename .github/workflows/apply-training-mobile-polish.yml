@@ -31,3 +31,4 @@ jobs:
           git add training.html
           git commit -m 'Apply final mobile polish to training' || exit 0
           git push origin HEAD:main
+      # trigger-v2
